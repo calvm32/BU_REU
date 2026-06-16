@@ -1,4 +1,4 @@
-function cahn_hilliard_2D()
+function CH2D()
     clc; clear; close all;
     
     %% Parameters
@@ -21,21 +21,8 @@ function cahn_hilliard_2D()
     movie_dt = 0.05;
 
     %% functions
-    function t_atmax = t_atmax(tau)
-        t_atmax = tau^(2/3);
-    end
-
     function mu = mu(t)
         mu = t/tau;
-    end
-
-    function power_spec = power_spec(t, Laplacian_k, phi_hat)
-        ksq = -Laplacian_k;
-        initial = integral(phi_hat.^2, 0, T);
-        power_spec = initial*exp( t^2*ksq/tau - 2*t*ksq^2 );
-    end
-
-    function domainwall_density = domainwall_density()
     end
     
     %% Initial condition

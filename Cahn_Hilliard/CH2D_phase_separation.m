@@ -1,4 +1,4 @@
-function cahn_hilliard_2D()
+function CH2D_phase_separation()
     clc; clear; close all;
     image = "count_droplets"; % "count_droplets" or "count_minmax"
     
@@ -118,9 +118,10 @@ function cahn_hilliard_2D()
         
         dlinemax = plot(t_hist, defect_max_hist, 'LineWidth',2, 'DisplayName', '# maxima');
         hold on;
-        dlinemax = plot(t_hist, defect_min_hist, 'LineWidth',2, 'DisplayName', '# minima');
+        dlinemin = plot(t_hist, defect_min_hist, 'LineWidth',2, 'DisplayName', '# minima');
         
         xlabel('t')
+        legend show
     end
 
     grid on
