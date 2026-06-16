@@ -27,8 +27,7 @@ function CH2D_domain_wall_density()
 
     function power_spec = power_spec(t, Laplacian_k, u_hat)
         ksq = -Laplacian_k;
-        initial = integral(abs(u_hat).^2, 0, T);
-        power_spec = initial .* exp( t^2*ksq/tau - 2*t*ksq.^2 );
+        power_spec = abs(u_hat).^2 .* exp( t^2*ksq/tau - 2*t*ksq.^2 );
     end
 
     function n = domainwall_density(t, Laplacian_k, u_hat)
