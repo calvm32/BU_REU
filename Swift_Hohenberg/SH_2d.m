@@ -1,0 +1,59 @@
+Lx = 2 * pi;
+Ly = 10 * pi;
+tf = 2000;
+dt = 0.01; % number of timesteps
+Nx = 2^7; % number of collocation points
+Ny = 2^9;
+
+x = linspace(-Lx/2, Lx/2, Nx); 
+y = linspace(-Ly/2, Ly/2, Ny);
+time = 0 : dt : tf;
+[X, Y] = meshgrid(x, y);
+
+mu = 1;
+kappa = -.1;
+k = sqrt(kappa + 1);
+up = sqrt(4 / 3 * (mu - kappa^2)) * cos(k * X);
+
+sigma = 0.1;
+u0 = up + (rand(Ny, Nx) - 0.5) * sigma;
+% u0 = sigma * randn(N, N) + randn(1, N);
+% u0 = sigma * randn(N, N);
+% u0 = exp((-X.^2 - Y.^2)/sigma);
+% u0 = sqrt(mu) * cos(0.8 * X) + sigma * rand(N, N);
+
+kx = fftshift((2 * pi / Lx) .* (- Nx / 2 : Nx / 2 - 1));
+ky = fftshift((2 * pi / Ly) .* (- Ny / 2 : Ny / 2 - 1));
+[Kx, Ky] = meshgrid(kx, ky);
+
+laplacian_symbol = -k^2 * Kx.^2 - Ky.^2;
+linear_hat_diag = -(1 + laplacian_symbol).^2 + mu;
+
+u = u0;
+hat_u = fft2(u0);
+
+h_img = imagesc(x, y, u);
+colormap('parula'); colorbar; caxis([-1, 1]);
+axis equal tight;
+title('Time: 0');
+
+for t = time
+    % Compute the nonlinear contribution
+    nonlinear = -u.^3;
+    nonlinear_hat = fft2(nonlinear);
+
+    % Implicit-Explicit Time
+    hat_u = (hat_u + dt * nonlinear_hat) ./ (1 -  dt * linear_hat_diag);
+
+    % Clark-Nicolson
+    % hat_u = (dt * nonlinear_hat + (1+0.5 * dt * linear_hat_diag) .* hat_u) ./ (1 - 0.5 * dt * linear_hat_diag);
+
+    u = real(ifft2(hat_u)); % invert u_hat
+    
+  
+    if mod(t, 5) == 0
+        set(h_img, 'CData', u);
+        title(['Swift-Hohenberg 2D Patterns | Time = ', num2str(t, '%.1f')]);
+        drawnow;
+    end
+end
