@@ -12,12 +12,12 @@ function SH2D_ETDRK4()
     Ly = yscale*pi;
 
     Nx = 2^7;
-    Ny = 2^9;
+    Ny = 2^10;
 
     dx = 2*Lx/Nx;
     dy = 2*Ly/Ny;
 
-    movie_dt = 1.0;
+    movie_dt = 10.0;
 
     mu = 0.25;
     k  = 0.95;
@@ -57,9 +57,9 @@ function SH2D_ETDRK4()
 
     % Linear operator:
     %
-    % u_t = -(1-2k2+k2^2)u + mu*u - u^3
+    % u_t = -(1-k2)^2 u + mu*u - u^3
     %
-    L_operator = -(1 - 2*k2 + k2.^2) + mu;
+    L_operator = -(1 - k2).^2 + mu;
 
     %% 2/3 dealiasing mask
 
@@ -101,8 +101,8 @@ function SH2D_ETDRK4()
     %% first plot: solution
     subplot(1,2,1)
 
-    u_phys = real(ifft2(u_hat));
-    im = imagesc(x,y,u_phys');
+    u = real(ifft2(u_hat));
+    im = imagesc(x,y,u');
 
     axis equal tight
     set(gca,'YDir','normal')
@@ -125,7 +125,7 @@ function SH2D_ETDRK4()
     %% second plot: cross section
     subplot(1,2,2)
     xh = round(Nx/2);
-    hline = plot(y,u_phys(xh,:),'LineWidth',2);
+    hline = plot(y,u(xh,:),'LineWidth',2);
 
     xlabel('y')
     ylabel('u(x=0,y)')
@@ -139,48 +139,40 @@ function SH2D_ETDRK4()
     %% Data storage
 
     ycross = y;
-    ucross = u_phys(xh,:);
+    ucross = u(xh,:);
 
     %% GIF setup
     save_gif = true;
-    gif_filename = sprintf('SH_ETDRK4_mu=%.2f_k=%.2f.gif',mu,k);
+    gif_filename = sprintf('Swift_hohenberg/simulations/SH_ETDRK4_mu=%.2f_k=%.2f.gif',mu,k);
     frame_count = 1;
     next_movie_time = t0;
 
     %% Time loop
 
     for n = 1:length(t)-1
-
         % ETDRK4
-
-        u = real(ifft2(u_hat));
-
         Nu = -u.^3;
         Nu_hat = dealias_mask .* fft2(Nu);
 
         a_hat = E2.*u_hat + Q.*Nu_hat;
-
         a = real(ifft2(a_hat));
         Na_hat = dealias_mask .* fft2(-a.^3);
 
         b_hat = E2.*u_hat + Q.*Na_hat;
-
         b = real(ifft2(b_hat));
         Nb_hat = dealias_mask .* fft2(-b.^3);
 
         c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
-
         c = real(ifft2(c_hat));
         Nc_hat = dealias_mask .* fft2(-c.^3);
 
         u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;
-        u_hat = dealias_mask .* u_hat;
 
         % -----------------
 
-        u_phys = real(ifft2(u_hat));
+        u = real(ifft2(u_hat));
 
-        ucross(end+1,:) = u_phys(xh,:);
+        ucross(end+1,:) = u(xh,:);
 
         if (t(n+1) >= next_movie_time) || (n+1 == length(t))
 
@@ -188,7 +180,7 @@ function SH2D_ETDRK4()
 
             subplot(1,2,1)
 
-            set(im,'CData',u_phys')
+            set(im,'CData',u')
 
             title(sprintf('t = %.3f',t(n+1)))
 
@@ -196,7 +188,7 @@ function SH2D_ETDRK4()
 
             set(hline,...
                 'XData',y,...
-                'YData',u_phys(xh,:))
+                'YData',u(xh,:))
 
             title(sprintf('Cross section at x = %.3f',x(xh)))
 
@@ -233,7 +225,7 @@ function SH2D_ETDRK4()
 
     %% Save data
 
-    save(sprintf('SH_mu=%.2f_k=%.2f.mat',mu,k),...
+    save(sprintf('Swift_hohenberg/simulations/SH_mu=%.2f_k=%.2f.mat',mu,k),...
         'mu','k','Nx','Ny','Lx','Ly',...
         'dt','T','ycross','ucross')
 
