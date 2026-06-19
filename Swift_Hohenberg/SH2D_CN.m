@@ -1,9 +1,9 @@
 Lx = 2 * pi;
 Ly = 10 * pi;
-tf = 1000;
+tf = 2000;
 dt = 0.01; % number of timesteps
-Nx = 2^6; % number of collocation points
-Ny = 2^8;
+Nx = 2^7; % number of collocation points
+Ny = 2^9;
 
 x = linspace(-Lx/2, Lx/2, Nx); 
 y = linspace(-Ly/2, Ly/2, Ny);
@@ -45,7 +45,7 @@ for t = time
     % Implicit-Explicit Time
     hat_u = (hat_u + dt * nonlinear_hat) ./ (1 -  dt * linear_hat_diag);
 
-    % Clark-Nicolson
+    % Crank-Nicolson
     % hat_u = (dt * nonlinear_hat + (1+0.5 * dt * linear_hat_diag) .* hat_u) ./ (1 - 0.5 * dt * linear_hat_diag);
 
     u = real(ifft2(hat_u)); % invert u_hat

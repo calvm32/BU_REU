@@ -3,16 +3,16 @@ function CH1D_domain_wall_density()
 
     %% Parameters
 
-    epsilon = 0.2; % used for scaling mu
+    epsilon = 0.05; % used for scaling mu
     blowup_time = epsilon^(-2/3);
 
-    t0 = 0.0;
+    t0 = -2.0;
     T  = blowup_time + 20.0;
 
     scale = 100;
     Lx = scale*pi;
 
-    Nx = 2^10;
+    Nx = 2^12;
 
     dx = Lx/Nx;
 
@@ -120,22 +120,22 @@ function CH1D_domain_wall_density()
 
     %% GIF setup
     save_gif = true;
-    gif_filename = ['cahn_hilliard_1D_muIC=' num2str(mu(0),'%.2f') '.gif'];
+    gif_filename = ['cahn_hilliard_1D_mu(1)=' num2str(mu(1),'%.2f') '.gif'];
     frame_count = 1;
     next_movie_time = t0;
 
     %% Time loop
 
     for n = 1:length(t)-1
-        lambda = -Laplacian_k.^2 - mu(t(n))*Laplacian_k;
+        L_operator = -Laplacian_k.^2 - mu(t(n))*Laplacian_k;
         u_phys = real(ifft(u_hat));
         u3_hat = fft(u_phys.^3);
 
         N_hat = Laplacian_k .* dealias_mask .* u3_hat;
 
         % explicit nonlinear, semi-implicit linear
-        u_hat = ((1 + 0.5*dt*lambda).*u_hat + dt*N_hat) ...
-                ./ (1 - 0.5*dt*lambda);
+        u_hat = ((1 + 0.5*dt*L_operator).*u_hat + dt*N_hat) ...
+                ./ (1 - 0.5*dt*L_operator);
 
         u_hat = dealias_mask .* u_hat;
         u_phys = real(ifft(u_hat));

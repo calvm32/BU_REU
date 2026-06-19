@@ -138,15 +138,15 @@ function CH2D_phase_separation()
     
     %% Time loop
     for n = 1:length(t)-1
-        lambda = -Laplacian_k.^2 - mu(t(n))*Laplacian_k;
+        L_operator = -Laplacian_k.^2 - mu(t(n))*Laplacian_k;
 
         u_phys = real(ifft2(u_hat));
         u3_hat = fft2(u_phys.^3);
         N_hat = Laplacian_k .* dealias_mask .* u3_hat;
     
         % explicit nonlinear, semi-explicit linear
-        u_hat = ((1 + 0.5*dt*lambda).*u_hat + dt*N_hat) ...
-                ./ (1 - 0.5*dt*lambda);
+        u_hat = ((1 + 0.5*dt*L_operator).*u_hat + dt*N_hat) ...
+                ./ (1 - 0.5*dt*L_operator);
         u_hat = dealias_mask .* u_hat;
         u_phys = real(ifft2(u_hat));
 

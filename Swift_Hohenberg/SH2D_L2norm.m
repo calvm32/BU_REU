@@ -1,34 +1,29 @@
-function CH2D()
+function SH2D_L2norm()
     clc; clear; close all;
     
     %% Parameters
-       
-    tau = 4; % used for scaling mu
-    
     t0 = 0.0;
     T  = 5.0;
     
-    scale=20;
-    Lx = scale*pi;
-    Ly = scale*pi;
+    xscale = 2;
+    yscale = 10;
+    Lx = xscale*pi;
+    Ly = yscale*pi;
     
-    Nx = 2^8;
-    Ny = 2^8;
+    Nx = 2^7;
+    Ny = 2^9;
     
     dx = Lx/Nx;
     dy = Ly/Ny;
     
     movie_dt = 0.05;
-
-    %% functions
-    function mu = mu(t)
-        mu = t/tau;
-    end
+    
+    mu = 4;
     
     %% Initial condition
 
     % random
-    sigma = 0.01;
+    sigma = 0.1;
     u0 = sigma*randn(Nx,Ny);
     u_hat = fft2(u0);
 
@@ -42,13 +37,13 @@ function CH2D()
     y = (-Ny/2:Ny/2-1)*dy;
     
     % time discretization
-    dt = 0.1 * min(dx,dy)^2;
+    dt = 0.1 * min(dx,dy);
     t = t0:dt:T;
     
     %% Fourier wavenumbers
     
-    kx = 2*pi * [0:Nx/2-1 -Nx/2:-1] / Lx;
-    ky = 2*pi * [0:Ny/2-1 -Ny/2:-1] / Ly;
+    kx = pi * [0:Nx/2-1 -Nx/2:-1] / Lx;
+    ky = pi * [0:Ny/2-1 -Ny/2:-1] / Ly;
     
     [KX,KY] = ndgrid(kx,ky);
     
@@ -77,10 +72,10 @@ function CH2D()
     colorbar
     
     title(sprintf('t = %.3f',t(1)))
-    xticks([-scale*pi 0 scale*pi])
-    xticklabels({['-' num2str(scale,'%.0f')] ,'0', [num2str(scale,'%.0f') '\pi']})
-    yticks([-scale*pi 0 scale*pi])
-    yticklabels({['-' num2str(scale,'%.0f')] ,'0', [num2str(scale,'%.0f') '\pi']})
+    xticks([-xscale*pi 0 xscale*pi])
+    xticklabels({['-' num2str(xscale,'%.0f')] ,'0', [num2str(xscale,'%.0f') '\pi']})
+    yticks([-yscale*pi 0 yscale*pi])
+    yticklabels({['-' num2str(yscale,'%.0f')] ,'0', [num2str(yscale,'%.0f') '\pi']})
 
     %% second plot: L2 norm
     subplot(1,2,2)
@@ -98,7 +93,7 @@ function CH2D()
     
     %% GIF setup
     save_gif = true;
-    gif_filename = ['cahn_hilliard_2D_muIC=' num2str(mu(0),'%.2f') '.gif'];
+    gif_filename = ['swift_hohenberg_2D_mu=' num2str(mu,'%.2f') '.gif'];
     
     frame_count = 1;
     
@@ -106,15 +101,15 @@ function CH2D()
     
     %% Time loop
     for n = 1:length(t)-1
-        lambda = -Laplacian_k.^2 - mu(t(n))*Laplacian_k;
+        L_operator = -(1+Laplacian_k).^2 + mu; % linear form
 
         u_phys = real(ifft2(u_hat));
         u3_hat = fft2(u_phys.^3);
-        N_hat = Laplacian_k .* dealias_mask .* u3_hat;
+        N_hat = -dealias_mask .* u3_hat; % nonlinear form
     
         % explicit nonlinear, semi-explicit linear
-        u_hat = ((1 + 0.5*dt*lambda).*u_hat + dt*N_hat) ...
-                ./ (1 - 0.5*dt*lambda);
+        u_hat = ((1 + 0.5*dt*L_operator).*u_hat + dt*N_hat) ...
+                ./ (1 - 0.5*dt*L_operator);
         u_hat = dealias_mask .* u_hat;
 
         t_hist(end+1) = t(n+1);
