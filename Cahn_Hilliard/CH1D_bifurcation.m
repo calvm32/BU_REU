@@ -149,29 +149,14 @@ function CH1D_bifurcation()
             
             hLine3.YData = abs(u_hat);
             
-            drawnow limitrate % High performance render refresh
+            drawnow limitrate 
             
             if save_gif
-                % Modern, clean single-line GIF output
                 exportgraphics(fig, gif_filename, 'Append', true);
             end
         end
     end
 
     disp(['GIF saved to: ', gif_filename])
-
-end
-
-
-%% Seismic colormap
-function cmap = seismic_colormap()
-
-    n = 256;
-
-    r = [(0:n/2-1)/(n/2), ones(1,n/2)];
-    g = [(0:n/2-1)/(n/2), (n/2-1:-1:0)/(n/2)];
-    b = [ones(1,n/2), (n/2-1:-1:0)/(n/2)];
-
-    cmap = [r(:),g(:),b(:)];
 
 end
