@@ -1,4 +1,5 @@
-function CH1D_gradient_stable()
+function CH1D_grad_stable()
+    % stabilized IMEX Euler
     clc; clear; close all;
 
     %% Parameters
@@ -7,14 +8,13 @@ function CH1D_gradient_stable()
     blowup_time = epsilon^(-2/3);
 
     t0 = -2.0;
-    T  = blowup_time + 20.0;
-    dt = 0.001; 
+    T  = blowup_time + 200.0;
+    dt = 0.01; 
 
     scale = 100;
     Lx = scale*pi;
 
-    Nx = 2^12;
-
+    Nx = 2^11;
     dx = Lx/Nx;
 
     movie_dt = 0.5;
@@ -38,9 +38,9 @@ function CH1D_gradient_stable()
         n = (1/pi)*sqrt(num/den);
     end
 
-    function density = domainwall_density_computed(u,Lx)
+    function density = domainwall_density_computed(u, domain_length)
         walls = sum(u .* circshift(u,-1) < 0);
-        density = walls / Lx;
+        density = walls / domain_length;
     end
 
     %% Initial condition
@@ -71,9 +71,9 @@ function CH1D_gradient_stable()
     dealias_mask = abs(kx) <= (2/3)*kx_max;
 
     %% Plot setup
-    figure('Position',[100 100 1600 500])
+    figure('Position',[100 100 1600 1600])
     %% first plot: solution
-    subplot(1,3,1)
+    subplot(2, 2, [1, 2]); 
 
     u_phys = real(ifft(u_hat));
 
@@ -84,12 +84,12 @@ function CH1D_gradient_stable()
     xlabel('x')
     ylabel('u')
 
-    title(sprintf('t = %.3f',t0))
+    title(sprintf('t = %.3f,    mu(t) = %.3f',t0, mu(t0)))
 
     grid on
 
     %% second plot: L2 norm
-    subplot(1,3,2)
+    subplot(2, 2, 3);
 
     t_hist = t0;
     l2_hist = l2_norm_periodic_1D(u_hat,Lx);
@@ -102,7 +102,7 @@ function CH1D_gradient_stable()
     grid on
 
     %% third plot: domain wall density
-    subplot(1,3,3)
+    subplot(2, 2, 4);
 
     comput_density = domainwall_density_computed(u_phys,Lx);
     theory_density = domainwall_density_theory(t0,Laplacian_k,u_hat);
@@ -134,14 +134,11 @@ function CH1D_gradient_stable()
         
         u3_hat = fft(u_phys.^3);
         u3_hat = dealias_mask .* u3_hat;
-        
-        numerator = u_hat + dt*(Laplacian_k .* u3_hat) + dt*S*(Laplacian_k .* u_hat);
-        
-        denominator = 1 + dt*( ...
-                        (Laplacian_k.^2) ...
-                        - mu(t(n))*Laplacian_k ...
-                        - S*Laplacian_k );
-        
+
+        numerator = u_hat ...
+            + dt*(mu(t)+S)*Laplacian_k.*u_hat ...
+            - dt*Laplacian_k.*u3_hat;
+        denominator = 1 + dt*(Laplacian_k.^2 - S*Laplacian_k);
         u_hat = numerator ./ denominator;
         
         u_hat = dealias_mask .* u_hat;
@@ -160,15 +157,15 @@ function CH1D_gradient_stable()
 
             u_phys = real(ifft(u_hat));
 
-            subplot(1,3,1)
+            subplot(2, 2, [1, 2]);
             set(hsol,'YData',u_phys)
-            title(sprintf('t = %.3f',t(n+1)))
+            title(sprintf('t = %.3f,    mu(t) = %.3f',t(n+1), mu(t(n+1))))
 
-            subplot(1,3,2)
+            subplot(2, 2, 3);
             set(hline,'XData',t_hist,'YData',l2_hist)
             axis tight
 
-            subplot(1,3,3)
+            subplot(2, 2, 4);
             blowup_mask = t_hist >= blowup_time;
             
             set(theory_density_line,'XData',t_hist(blowup_mask),'YData',theory_density(blowup_mask))
