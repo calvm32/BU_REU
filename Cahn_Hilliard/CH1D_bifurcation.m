@@ -1,32 +1,44 @@
 function CH1D_bifurcation()
     clc; clear; close all;
 
+    function [mu_j, k_j] = critical_bifurcation(j, L, mass)
+        % Computes the j'th frequencies critical mu and associated eigenvalue
+        k_j = 2 * pi * j / L
+        mu_j = 3 * mass^2 + k_j^2;    
+    end
+
     %% Parameters
+    save_video = true;
+
     t0 = 0.0;
-    T  = 1500.0;
+    T  = 50;
     dt = 0.1;
 
-    xscale = 10;
+    mass = 0;
+
+    xscale = 2;
 
     Lx = xscale*pi;
 
-    Nx = 2^11;
+    Nx = 2^12;
 
     dx = 2*Lx/Nx;
 
-    plot_dt = 10.0; 
+    plot_dt = 0.5; 
     plot_every = round(plot_dt / dt); % make multiple of dt
 
-    mu = .2;
+    [mu, k_j] = critical_bifurcation(5, 2 * Lx, mass)
+    mu = mu + 1.0
 
     %% Initial condition
     % spatial grid (needed for patterned base state)
     x = (-Nx/2:Nx/2-1)*dx;
 
     % Zero mean white noise
-    u0 = 1.0 * (rand(1, Nx) - 0.5);
+    u0 = mass + 0.01 * (rand(1, Nx) - 0.5);
 
     u_hat = fft(u0);
+    u = u0;
 
     %% discretization
     % time discretization
@@ -64,49 +76,72 @@ function CH1D_bifurcation()
     clear LR Lvec
 
     %% Plot setup
-    fig = figure('Position',[100 100 1400 450]);
+    fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
     %% Pre-allocate tracking metrics
     mean_hist = zeros(1, num_time_steps);
-    u = real(ifft(u_hat));
     mean_hist(1) = trapz(u) * dx * 0.5 / Lx;
 
-    %% Subplot 1: Solution
-    ax1 = subplot(1,3,1);
+    dominate_mode = zeros(1, num_time_steps);
+    [~, max_index] = max(abs(fft(u - mass)));
+    dominate_mode(1) = kx(max_index);
+
+    %% Subplot 1: Solution (Spans the entire top row)
+    ax1 = subplot(2,3,[1 3]);
     hLine1 = plot(ax1, x, u, 'LineWidth', 1.5);
 
-    ylim(ax1, [-1.2 1.2]); 
+    ylim(ax1, mass + 1.2 * [-sqrt(mu) sqrt(mu)]); 
     xlabel(ax1, 'x'); 
     ylabel(ax1, 'u');
-
     hTitle1 = title(ax1, sprintf('t = %.3f', t0));
-    grid(ax1, 'on');
 
-    %% Subplot 2: Mean value
-    ax2 = subplot(1,3,2);
+    grid(ax1, 'on');
+    
+    %% Subplot 2: Mean value (Bottom Left)
+    ax2 = subplot(2,3,4);
     hLine2 = plot(ax2, t(1), mean_hist(1), 'LineWidth', 2);
 
     xlabel(ax2, 't'); 
-    ylabel(ax2, 'Mean Value');
+    ylabel(ax2, 'Mass');
 
     grid(ax2, 'on');
+    
+    %% Subplot 3: Dominate mode (Bottom Center)
+    ax3 = subplot(2,3,5);
+    hLine3 = plot(ax3, t(1), dominate_mode(1), 'LineWidth', 2);
 
-    %% Subplot 3: Fourier Spectrum
-    ax3 = subplot(1,3,3);
-    hLine3 = plot(ax3, kx, abs(u_hat), 'LineWidth', 1.5);
+    xlabel(ax3, 't'); 
+    ylabel(ax3, 'Wavenumber (k)');
 
-    xlabel(ax3, 'Wavenumber (k)'); 
-    ylabel(ax3, '$|\hat{u}|$', 'Interpreter', 'latex')
+    ylim(ax3, [0, 4]); 
+
 
     grid(ax3, 'on');
 
     drawnow limitrate
 
+    %% Subplot 4: Fourier Spectrum (Bottom Right)
+    ax4 = subplot(2,3,6);
+    hFreq = plot(ax4, kx, abs(u_hat), 'LineWidth', 2);
+
+    xlabel(ax4, 'k'); 
+    ylabel(ax4, '$|\hat{u}|$', 'Interpreter', 'latex');
+
+    set(ax4, 'YScale', 'log');
+    ylim(ax4, [1e-2, Inf])
+    grid(ax3, 'on');
+
+    drawnow limitrate
+
     %% GIF setup
-    save_gif = true;
-    gif_filename = sprintf('CH_ETDRK4_mu=%.2f.gif', mu);
-    if save_gif && exist(gif_filename, 'file') % delete file if it exists
-        delete(gif_filename); 
+    video_filename = sprintf('CH_ETDRK4_mu=%.2f.mp4', mu);
+    
+    if save_video
+        % Initialize the MP4 writer using the H.264 codec
+        v = VideoWriter(video_filename, 'MPEG-4');
+        v.FrameRate = 15;  % Target frames per second
+        v.Quality = 100;   % Highest crispness, lowest compression artifacts
+        open(v);
     end
 
     %% Time loop
@@ -136,23 +171,31 @@ function CH1D_bifurcation()
         u = real(ifft(u_hat));
 
         mean_hist(n) = trapz(u) * dx * 0.5 / Lx;
+        [~, max_index] = max(abs(fft(u - mass)));
+        dominate_mode(n) = kx(max_index);
 
 
         % Update figures
         if mod(n - 1, plot_every) == 0
             hLine1.YData = u;
-            hTitle1.String = sprintf('t = %.2f', t(n));
+            hTitle1.String = sprintf('t = %.4f', t(n));
             
             hLine2.XData = t(1:n);
             hLine2.YData = mean_hist(1:n);
             axis(ax2, 'tight');
             
-            hLine3.YData = abs(u_hat);
-            
+            hLine3.XData = t(1:n);
+            hLine3.YData = dominate_mode(1:n);
+            %axis(ax3, 'tight');
+
+            hFreq.YData = abs(u_hat);
+           
             drawnow limitrate 
             
-            if save_gif
-                exportgraphics(fig, gif_filename, 'Append', true);
+            if save_video
+                % Capture the current high-res figure frame and write to file
+                frame = getframe(fig);
+                writeVideo(v, frame);
             end
         end
     end

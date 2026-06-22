@@ -17,7 +17,7 @@ function CH1D_gradient_stable()
 
     dx = Lx/Nx;
 
-    movie_dt = 0.05;
+    movie_dt = 0.5;
 
     %% functions
     function mu_val = mu(t)
