@@ -28,7 +28,7 @@ function CH1D_bifurcation()
     plot_every = round(plot_dt / dt); % make multiple of dt
 
     [mu, k_j] = critical_bifurcation(5, 2 * Lx, mass)
-    mu = mu + 1.0
+    mu = mu + 0.1
 
     %% Initial condition
     % spatial grid (needed for patterned base state)
@@ -196,6 +196,6 @@ function CH1D_bifurcation()
         end
     end
 
-    disp(['GIF saved to: ', gif_filename])
+    disp(['Video saved to: ', video_filename])
 
 end
