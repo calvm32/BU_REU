@@ -186,7 +186,7 @@ function CH1D_bifurcation()
 
             hFreq.YData = abs(u_hat);
            
-            drawnow limitrate 
+            drawnow; 
             
             if save_video
                 % Capture the current high-res figure frame and write to file
