@@ -38,12 +38,8 @@ function CH1D_bifurcation()
     Laplacian_hat = -kx.^2;
 
     % Linear operator:
-   
-    %
-    % u_t = - Delta (Delta u + mu*u - u^3)
-    %
-
     L_operator = -(Laplacian_hat.^2);
+    
     %% 2/3 dealiasing mask
     kx_max = max(abs(kx));
     dealias_mask = abs(kx) <= (2/3)*kx_max;

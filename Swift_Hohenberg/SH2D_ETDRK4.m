@@ -143,7 +143,7 @@ function SH2D_ETDRK4()
 
     %% GIF setup
     save_gif = true;
-    gif_filename = sprintf('Swift_hohenberg/simulations/SH_ETDRK4_mu=%.2f_k=%.2f.gif',mu,k);
+    gif_filename = sprintf('Swift_Hohenberg/simulations/SH_ETDRK4_mu=%.2f_k=%.2f.gif',mu,k);
     frame_count = 1;
     next_movie_time = t0;
 

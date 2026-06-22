@@ -1,42 +1,23 @@
-
-        %% Diagnostics
-
-        u_phys = real(ifft(u_hat));
-
-        t_hist(end+1) = t(n+1);
-
-        l2_hist(end+1) = ...
-            l2_norm_periodic_1D(u_hat,Lx);
-
-        comput_density(end+1) = ...
-            domainwall_density_computed(u_phys,Lx);
-
-        theory_density(end+1) = ...
-            domainwall_density_theory( ...
-                t(n+1),Laplacian_k,u_hat);
-
-
-
 function CH1D_ETDRK4()
     clc; clear; close all;
 
     %% Parameters
-    t0 = 0.0;
-    T  = 1500.0;
+    epsilon = 0.05; % used for scaling mu
+    blowup_time = epsilon^(-2/3);
+
+    t0 = -2.0;
+    T  = blowup_time + 100.0;
     dt = 0.1;
 
-    xscale = 10;
-
-    Lx = xscale*pi;
+    scale = 100;
+    Lx = scale*pi;
 
     Nx = 2^11;
+    dx = Lx/Nx;
 
-    dx = 2*Lx/Nx;
-
-    plot_dt = 10.0; 
+    plot_dt = 0.5; 
     plot_every = round(plot_dt / dt); % make multiple of dt
 
-    epsilon = 0.01;
 
     %% functions
     function mu_val = mu(t)
@@ -63,6 +44,13 @@ function CH1D_ETDRK4()
         density = walls / domain_length;
     end
 
+    function F = free_energy(u, mu, dx)
+        ux = gradient(u, dx);
+        density = 0.25*u.^4 -0.5*mu*u.^2 +0.5*ux.^2;
+        F = sum(density)*dx;
+    
+    end
+
     %% Initial condition
     sigma = 0.01;
     u0 = sigma*randn(1,Nx);
@@ -79,16 +67,12 @@ function CH1D_ETDRK4()
     x = (-Nx/2:Nx/2-1)*dx;
 
     %% Fourier wavenumbers
-    kx = pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
+    kx = 2*pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
     Laplacian_hat = -kx.^2;
 
     % Linear operator:
-   
-    %
-    % u_t = - Delta (Delta u + mu*u - u^3)
-    %
-
     L_operator = -(Laplacian_hat.^2);
+
     %% 2/3 dealiasing mask
     kx_max = max(abs(kx));
     dealias_mask = abs(kx) <= (2/3)*kx_max;
@@ -112,31 +96,38 @@ function CH1D_ETDRK4()
     fig = figure('Position',[100 100 1400 450]);
 
     %% Pre-allocate tracking metrics
-    mean_hist = zeros(1, num_time_steps);
-    mean_hist(1) = trapz(u) * dx * 0.5 / Lx;
+    l2_hist = zeros(1, num_time_steps);
+    l2_hist(1) = l2_norm_periodic_1D(u_hat, Lx);
     
     computed_density = zeros(1, num_time_steps);
-    computed_density(1) = domainwall_density_computed(u, 2*Lx);
+    computed_density(1) = domainwall_density_computed(u, Lx);
 
     theory_density = zeros(1, num_time_steps);
     theory_density(1) = domainwall_density_theory(t0,Laplacian_hat, u_hat);
+
+    energy_hist = zeros(1, num_time_steps);
+    energy_hist(1) = free_energy(u0, mu(t0), dx);
     
-
-
     %% Subplot 1: Solution
-    ax1 = subplot(1,3,1);
-    hLine1 = plot(ax1, x, u, 'LineWidth', 1.5);
+    ax1 = subplot(2,2,1);
+    u_line = plot(ax1, x, u, 'LineWidth', 1.5);
 
     ylim(ax1, [-1.2 1.2]); 
     xlabel(ax1, 'x'); 
     ylabel(ax1, 'u');
 
-    hTitle1 = title(ax1, sprintf('t = %.3f, mu = %.3f', t0, mu(t(1))));
+    hTitle1 = title(ax1, sprintf('t = %.3f, \\epsilon = %.3f', t0, mu(1)));
     grid(ax1, 'on');
 
+    hTitle1.String = sprintf('t = %.3f, \\mu = %.3f', t(n), mu(t(n)));
+
+and set
+
+hTitle1.Interpreter = 'tex';
+
     %% Subplot 2: Mean value
-    ax2 = subplot(1,3,2);
-    hLine2 = plot(ax2, t(1), mean_hist(1), 'LineWidth', 2);
+    ax2 = subplot(2,2,2);
+    l2_line = plot(ax2, t(1), l2_hist(1), 'LineWidth', 2);
 
     xlabel(ax2, 't'); 
     ylabel(ax2, '||u||_{L^2}');
@@ -144,24 +135,32 @@ function CH1D_ETDRK4()
     grid(ax2, 'on');
 
     %% Subplot 3: Fourier Spectrum
-    ax3 = subplot(1,3,3);
+    ax3 = subplot(2,2,3);
 
-    theory_density_line = plot(ax3, t(1), theory_density, ...
+    theory_density_line = plot(ax3, t(1), theory_density(1), ...
         'LineWidth',2,'DisplayName','theoretical');
 
     hold(ax3, 'on');
 
-    computed_density_line = plot(ax3, t(1), computed_density, ...
+    computed_density_line = plot(ax3, t(1), computed_density(1), ...
         'LineWidth',2,'DisplayName','computed');
 
     grid(ax3, 'on');
     legend(ax3, 'show');
 
+    %% Subplot 4: Free Energy
+    ax4 = subplot(2,2,4);
+    
+    energy_line = plot(ax4, t(1), energy_hist(1), ...
+        'LineWidth',2,'DisplayName','theoretical');
+    grid(ax4, 'on');
+    legend(ax4, 'show');
+
     drawnow limitrate
 
     %% GIF setup
     save_gif = true;
-    gif_filename = sprintf('cahn_hilliard_1D_mu(1)=%.2f.gif', mu);
+    gif_filename = sprintf('cahn_hilliard_1D_epsilon=%.2f_t0=%.2f.gif', epsilon, t0);
     if save_gif && exist(gif_filename, 'file') % delete file if it exists
         delete(gif_filename); 
     end
@@ -169,99 +168,71 @@ function CH1D_ETDRK4()
     %% Time loop
 
     for n = 2:num_time_steps
-        mu = mu(t(n));
-        % Stage 1
-        u3_nonlinear = u.^3 - mu*u;
+        % Setup intermediate times for RK4 non-autonomous evaluation
+        t_prev = t(n-1);
+        t_half = t_prev + dt/2;
+        t_curr = t(n);
+        
+        % Stage 1 (Evaluated at t_{n-1})
+        u3_nonlinear = u.^3 - mu(t_prev)*u;
         Nu_hat = dealias_mask .* Laplacian_hat .* fft(u3_nonlinear);
         
-        % Stage 2
+        % Stage 2 (Evaluated at midpoint)
         a_hat = E2.*u_hat + Q.*Nu_hat;
         a = real(ifft(a_hat));
-        Na_hat = dealias_mask .* Laplacian_hat .* fft(a.^3 - mu*a);
+        Na_hat = dealias_mask .* Laplacian_hat .* fft(a.^3 - mu(t_half)*a);
         
-        % Stage 3
+        % Stage 3 (Evaluated at midpoint)
         b_hat = E2.*u_hat + Q.*Na_hat;
         b = real(ifft(b_hat));
-        Nb_hat = dealias_mask .* Laplacian_hat .* fft(b.^3 - mu*b);
+        Nb_hat = dealias_mask .* Laplacian_hat .* fft(b.^3 - mu(t_half)*b);
         
-        % Stage 4
+        % Stage 4 (Evaluated at t_n)
         c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
         c = real(ifft(c_hat));
-        Nc_hat = dealias_mask .* Laplacian_hat .* fft(c.^3 - mu*c);
+        Nc_hat = dealias_mask .* Laplacian_hat .* fft(c.^3 - mu(t_curr)*c);
         
         % Final Time Step Combination
         u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;
         u = real(ifft(u_hat));
-
-        % Update data
-
-        computed_density = zeros(1, num_time_steps);
-        computed_density(1) = domainwall_density_computed(u, 2*Lx);
-    
-        theory_density = zeros(1, num_time_steps);
-        theory_density(1) = domainwall_density_theory(t0,Laplacian_hat, u_hat);
-        l2_hist(n) = l2_norm_periodic_1D(u_hat, 2*Lx);
+        
+        % Update data arrays
+        computed_density(n) = domainwall_density_computed(u,Lx);
+        theory_density(n) = domainwall_density_theory(t_curr, Laplacian_hat, u_hat);
+        l2_hist(n) = l2_norm_periodic_1D(u_hat, Lx);
 
         % Update figures
         if mod(n - 1, plot_every) == 0
-            hLine1.YData = u;
+            u_line.YData = u;
             hTitle1.String = sprintf('t = %.3f, mu = %.3f', t(n), mu(t(n)));
             
-            hLine2.XData = t(1:n);
-            hLine2.YData = ls_hist(1:n);
+            l2_line.XData = t(1:n);
+            l2_line.YData = l2_hist(1:n);
             axis(ax2, 'tight');
-            
-            hLine3.YData = abs(u_hat);
 
- 
-            % 
-            % subplot(1,3,2)
-            % 
-            % set(hline,...
-            %     'XData',t_hist,...
-            %     'YData',l2_hist)
-            % 
-            % axis tight
-            % 
-            % subplot(1,3,3)
-            % 
-            % blowup_mask = ...
-            %     t_hist >= blowup_time;
-            % 
-            % set(theory_density_line,...
-            %     'XData',t_hist(blowup_mask),...
-            %     'YData',theory_density(blowup_mask))
-            % 
-            % set(comput_density_line,...
-            %     'XData',t_hist(blowup_mask),...
-            %     'YData',comput_density(blowup_mask))
-            % 
-            % axis tight
+            blowup_mask = t(1:n) >= blowup_time;
+
+            theory_density_line.XData = t(blowup_mask);
+            theory_density_line.YData = theory_density(blowup_mask);
+  
+            computed_density_line.XData = t(blowup_mask);
+            computed_density_line.YData = computed_density(blowup_mask);
+
+            energy_hist(n) = free_energy(u, mu(t(n)), dx);
+            energy_line.XData = t(1:n);
+            energy_line.YData = energy_hist(1:n);
+
+            axis(ax3, 'tight');
             
-            drawnow limitrate % High performance render refresh
+            drawnow limitrate 
             
             if save_gif
-                % Modern, clean single-line GIF output
                 exportgraphics(fig, gif_filename, 'Append', true);
             end
         end
     end
 
     disp(['GIF saved to: ', gif_filename])
-
-end
-
-
-%% Seismic colormap
-function cmap = seismic_colormap()
-
-    n = 256;
-
-    r = [(0:n/2-1)/(n/2), ones(1,n/2)];
-    g = [(0:n/2-1)/(n/2), (n/2-1:-1:0)/(n/2)];
-    b = [ones(1,n/2), (n/2-1:-1:0)/(n/2)];
-
-    cmap = [r(:),g(:),b(:)];
 
 end
 

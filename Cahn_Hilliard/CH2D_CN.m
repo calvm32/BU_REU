@@ -1,4 +1,4 @@
-function CH2D_domain_wall_density()
+function CH2D_CN()
     clc; clear; close all;
     
     %% Parameters
