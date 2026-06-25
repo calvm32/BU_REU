@@ -7,9 +7,10 @@ function [mu_j, k_j] = critical_bifurcation(j, L, mass)
 end
 
 %% Parameters
+A0 = 1e-1;
 t0 = 0.0;
-T  = 0.01;
-dt = 0.01;
+T  = 100;
+dt = 0.001;
 
 mass = 0;
 
@@ -20,9 +21,9 @@ Nx = 2^12;
 [mu, ~] = critical_bifurcation(5, 2 * Lx, mass);
 
 %% Video paramaters
-plot_dt = 0.01; 
+plot_dt = 5.0; 
 plot_every = round(plot_dt / dt); % make multiple of dt
-save_video = true;
+save_video = false;
 
 %% Find k_j's for initial data
 k_j = pi * [0:7] / Lx;
@@ -68,14 +69,14 @@ clear LR Lvec
 k = k_j(2);
 
 % Zero mean white noise
-noise = 0.0002 * (rand(1, Nx) - 0.5);
+noise = 0.02 * (rand(1, Nx) - 0.5);
 noise = noise - mean(noise);
 
 % Zero mean white noise
 %u0 = mass + noise;
 
 % Start at k_bif
-u0 = 0.001*cos(k * x) + mass;
+u0 = A0 * cos(k * x) + mass;
 
 
 video_filename = sprintf('k=%.3f_T=%.0f.mp4', k, T);
@@ -158,7 +159,6 @@ if save_video
 end
 
 %% Time loop
-
 for n = 2:num_time_steps
     % Stage 1
     u3_nonlinear = u.^3 - mu*u;
@@ -220,6 +220,13 @@ end
 
 if save_video
     close(v);
+    disp(['Video saved to: ', video_filename])
 end
 
-disp(['Video saved to: ', video_filename])
+fprintf('Surpassing time: %.4f \n', dominate_mode(2, 1))
+
+k1 = k_j(2);
+k3 = k_j(4);
+lambda_1 = mu * k1^2 - k1^4;
+lambda_3 = mu * k3^2 - k3^4;
+pred_t_surpass = log( A0^2 * k3^2 / (4 * lambda_3 - 12 * lambda_1) ) / ( lambda_1 - lambda_3)
