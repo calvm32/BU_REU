@@ -9,7 +9,7 @@ num_runs = 20;
 t0 = -10.0;
 T  = 150;
 dt = 0.1;
-epsilon = 0.05;
+epsilon = 0.025;
 mu = @(t) epsilon * t;
 
 mass = 0;
