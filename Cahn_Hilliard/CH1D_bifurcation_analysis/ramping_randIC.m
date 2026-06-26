@@ -84,9 +84,7 @@ for m = 1:length(alpha)
     u_hat = fft(u0);
     u = u0;
     
-    
     %% Time loop
-    
     for n = 2:num_time_steps
         % Stage 1
         u3_nonlinear = u.^3 - mu*u;
