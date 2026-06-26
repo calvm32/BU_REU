@@ -7,9 +7,8 @@ function [mu_j, k_j] = critical_bifurcation(j, L, mass)
 end
 
 %% Parameters
-A0 = 1e-1;
-t0 = 0.0;
-T  = 100;
+eps = 5e-2;
+tspan = [0 100];
 dt = 0.001;
 
 mass = 0;
@@ -28,40 +27,30 @@ save_video = false;
 %% Find k_j's for initial data
 k_j = pi * [0:7] / Lx;
 
-%% discretization
-% time discretization
-t = t0:dt:T;
-num_time_steps = length(t);
-
-% spatial grid
+%% spatial grid
 dx = 2*Lx/Nx;
 x = (-Nx/2:Nx/2-1)*dx;
 
 % Fourier wavenumbers
 kx = pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
-Laplacian_hat = -kx.^2;
-
-%% Linear operator:
-L_operator = -(Laplacian_hat.^2);
+Laplacian_hat = -kx.^4;
 
 %% 2/3 dealiasing mask
 kx_max = max(abs(kx));
 dealias_mask = abs(kx) <= (2/3)*kx_max;
 
-%% ETDRK4 setup
-E  = exp(dt*L_operator);
-E2 = exp(dt*L_operator/2);
-M = 16; % no. of points for complex means
-r = exp(1i*pi*((1:M)-0.5)/M); % roots of unity
-Lvec = L_operator(:);
-LR = dt*Lvec(:,ones(M,1)) + r(ones(numel(L_operator),1),:);
 
-Q  = dt*real(mean((exp(LR/2)-1)./LR,2)).';
-f1 = dt*real(mean((-4-LR + exp(LR).*(4-3*LR+LR.^2))./LR.^3 ,2)).';
-f2 = dt*real(mean((2+LR + exp(LR).*(-2+LR))./LR.^3 ,2)).';
-f3 = dt*real(mean((-4-3*LR-LR.^2 + exp(LR).*(4-LR))./LR.^3 ,2)).';
+%% Setup problem
+L_op = -kx.^2;
 
-clear LR Lvec
+function [Nu_hat] = N_op(u_hat, t)
+    u = real(ifft(u_hat));
+    Nu_hat = -kx.^2 .* fft(-u.^3 - mu(t) .* u);
+    Nu_hat = Nu_hat .* dealias_mask;
+end
+
+prob = EvolutionProblem(L_op, N_op);
+sol = evolution_solve(prob, ETRDK4(M=16), u0, tspan, dt, save_every=);
 
 
 %% Initial condition

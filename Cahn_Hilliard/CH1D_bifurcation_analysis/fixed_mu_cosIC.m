@@ -57,6 +57,8 @@ dealias_mask = abs(kx) <= (2/3)*kx_max;
 E  = exp(dt*L_operator);
 E2 = exp(dt*L_operator/2);
 M = 16; % no. of points for complex means
+disp(class(M));
+
 r = exp(1i*pi*((1:M)-0.5)/M); % roots of unity
 Lvec = L_operator(:);
 LR = dt*Lvec(:,ones(M,1)) + r(ones(numel(L_operator),1),:);

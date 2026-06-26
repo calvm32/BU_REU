@@ -23,12 +23,12 @@ function mu_val = mu(t)
     mu_val = t*epsilon;
 end
 
-function P = power_spec(t, Laplacian_k, u_hat)
+function P = power_spec(t, Laplacian_k, u_hat, epsilon)
     ksq = -Laplacian_k;
     P = abs(u_hat).^2 .* exp(t^2*ksq*epsilon - 2*t*ksq.^2);
 end
 
-function n = domainwall_density_theory(t, Laplacian_k, u_hat)
+function n = domainwall_density_theory(t, Laplacian_k, u_hat, epsilon)
     P = power_spec(t, Laplacian_k, u_hat);
     ksq = -Laplacian_k;
 
