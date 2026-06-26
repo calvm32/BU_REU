@@ -72,13 +72,13 @@ end
 Mutating helper function to compute the Cahn-Hilliard non-linear forcing term N(u) 
 completely in-place, preventing allocations inside the time-stepping engine.
 """
-function compute_nonlinear_forcing_hat!(N_hat, u, mu, Laplacian_hat, dealias_mask, u3_scratch)
+function compute_nonlinear_forcing_hat!(N_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch)
     @. u3_scratch = u^3 - mu * u
     
     # Structural FFT allocation-free assignment (or out-of-place functional fallback)
     u3_hat = fft(u3_scratch) 
     
-    @. N_hat = dealias_mask * Laplacian_hat * u3_hat
+    @. N_hat = dealias_mask * Laplacian_k * u3_hat
 end
 
 """
@@ -91,7 +91,7 @@ function solve_etdrk4!(
     mu::T, 
     mass::T,
     kx::Vector{T},
-    Laplacian_hat::Vector{T}, 
+    Laplacian_k::Vector{T}, 
     dealias_mask::Vector{T}, 
     E::Vector{T}, E2::Vector{T}, Q::Vector{T}, f1::Vector{T}, f2::Vector{T}, f3::Vector{T},
     plot_every::Int,
@@ -142,22 +142,22 @@ function solve_etdrk4!(
         # --- ETDRK4 In-place Step Formulation ---
         
         # Stage 1
-        compute_nonlinear_forcing_hat!(Nu_hat, u, mu, Laplacian_hat, dealias_mask, u3_scratch)
+        compute_nonlinear_forcing_hat!(Nu_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch)
         
         # Stage 2 (Predictor step 'a')
         @. a_hat = E2 * u_hat + Q * Nu_hat
         a .= real.(ifft(a_hat))
-        compute_nonlinear_forcing_hat!(Na_hat, a, mu, Laplacian_hat, dealias_mask, u3_scratch)
+        compute_nonlinear_forcing_hat!(Na_hat, a, mu, Laplacian_k, dealias_mask, u3_scratch)
         
         # Stage 3 (Predictor step 'b')
         @. b_hat = E2 * u_hat + Q * Na_hat
         b .= real.(ifft(b_hat))
-        compute_nonlinear_forcing_hat!(Nb_hat, b, mu, Laplacian_hat, dealias_mask, u3_scratch)
+        compute_nonlinear_forcing_hat!(Nb_hat, b, mu, Laplacian_k, dealias_mask, u3_scratch)
         
         # Stage 4 (Predictor step 'c')
         @. c_hat = E2 * a_hat + Q * (2 * Nb_hat - Nu_hat)
         c .= real.(ifft(c_hat))
-        compute_nonlinear_forcing_hat!(Nc_hat, c, mu, Laplacian_hat, dealias_mask, u3_scratch)
+        compute_nonlinear_forcing_hat!(Nc_hat, c, mu, Laplacian_k, dealias_mask, u3_scratch)
         
         # Final Correction Step
         @. u_hat = E * u_hat + f1 * Nu_hat + 2 * f2 * (Na_hat + Nb_hat) + f3 * Nc_hat
@@ -223,8 +223,8 @@ function run_simulation()
     half_Nx = Nx ÷ 2
     kx = (T_type(pi) / Lx) .* vcat(0:(half_Nx - 1), (-half_Nx):-1) 
     kx_float = [Float64(val) for val in kx]
-    Laplacian_hat = @. -kx^2
-    L_operator = @. -(Laplacian_hat^2)
+    Laplacian_k = @. -kx^2
+    L_operator = @. -(Laplacian_k^2)
     
     kx_max = maximum(abs.(kx))
     dealias_mask = [abs(k) <= (T_type(2)/3) * kx_max ? T_type(1) : T_type(0) for k in kx]
@@ -243,7 +243,7 @@ function run_simulation()
         u  = copy(u0)
         
         @time u_hist, u_hat_hist, dom_t, dom_k = solve_etdrk4!(
-            u, num_time_steps, t_vec, mu, mass, kx, Laplacian_hat, dealias_mask,
+            u, num_time_steps, t_vec, mu, mass, kx, Laplacian_k, dealias_mask,
             E, E2, Q, f1, f2, f3, plot_every, num_frames
         )
 

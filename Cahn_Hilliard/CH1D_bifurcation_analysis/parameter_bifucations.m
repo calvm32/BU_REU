@@ -1,6 +1,20 @@
-clear; clc;
+clc; clear; close all;
 
-graph = 4; % valid: 1, 2, 3, 4
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description and configuration
+% Find how different parameters (L, k, m, mu0) interact
+
+% 1: bifurcation ( plots the exact point of bifurcation for varying L, k )
+% 2: bifurcation threshold ( plot fourier modes VS. time, plot domain wall density VS. time, plot solution VS. time )
+% 3: largest unstable ( uses the bifurcation regime mu - mu_bif to find the largest unstable mode k for varying mu just taken in a linear space )
+% 4: largest unstable, varying in time ( uses the bifurcation regime mu - mu_bif to find the largest unstable mode k for varying epsilon, as time changes )
+
+type = 1;
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
 
 mu0 = -4;
 m = 1;
@@ -15,9 +29,8 @@ end
 
 mu = @(epsilon, t, mu0) epsilon*t + mu0;
 
-switch graph
+switch type
     case 1 
-        % plots the exact point of bifurcation for varying L, k
         epsilon = 0.05;
         t = 2;
         
@@ -34,8 +47,6 @@ switch graph
         zlabel('\mu-\mu_{bif}')
 
     case 2 
-        % plots simply the threshold that mu would need to cross 
-        % in order to bifurcate for varying L, k
         [L,K] = meshgrid(linspace(2,100,300),0:20);
         
         figure; hold on
@@ -48,8 +59,6 @@ switch graph
         title('Instability boundaries')
 
     case 3 
-        % uses the bifurcation regime mu - mu_bif to find the largest unstable mode k 
-        % for varying mu just taken in a linear space
         Lvec  = linspace(2,100,300);
         muvec = linspace(0,20,300);
         [L,Mu] = meshgrid(Lvec,muvec);
@@ -87,8 +96,6 @@ switch graph
         colorbar
 
     case 4 
-        % uses the bifurcation regime mu - mu_bif to find the largest unstable mode k 
-        % for varying epsilon, as time changes
         Lvec  = linspace(2,100,200);
         epsvec = linspace(0,5,200);
         [L,Eps] = meshgrid(Lvec,epsvec);

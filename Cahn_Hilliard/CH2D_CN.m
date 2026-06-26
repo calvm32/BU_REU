@@ -18,7 +18,7 @@ Ny = 2^8;
 dx = Lx/Nx;
 dy = Ly/Ny;
 
-movie_dt = 0.05;
+plot_dt = 0.05;
 
 %% functions
 function mu_val = mu(t)
@@ -167,7 +167,7 @@ for n = 1:length(t)-1
 
     if (t(n+1) >= next_movie_time) || (n+1 == length(t))
 
-        next_movie_time = next_movie_time + movie_dt;
+        next_movie_time = next_movie_time + plot_dt;
         u_phys = real(ifft2(u_hat));
 
         set(im,'CData',u_phys')

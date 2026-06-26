@@ -1,12 +1,5 @@
 clc; clear; close all;
 
-function [mu_j, k_j] = critical_bifurcation(j, L, mass)
-    % Computes the j'th frequencies critical mu and associated eigenvalue
-    k_j = 2 * pi * j / L
-    mu_j = 3 * mass^2 + k_j.^2;    
-end
-
-
 %% Parameters
 save_video = true;
 
@@ -18,28 +11,24 @@ mu = @(t) epsilon * t;
 
 mass = 0;
 
-xscale = 2;
+xscale = 8;
 
 Lx = xscale*pi;
 
-Nx = 2^12;
+Nx = 2^8;
 
 dx = 2*Lx/Nx;
 
 plot_dt = 0.2; 
 plot_every = round(plot_dt / dt); % make multiple of dt
 
-k_j = 2 * pi * j / L
-mu_j = 3 * mass^2 + k_j.^2; 
-
-
-
 %% Initial condition
 % spatial grid (needed for patterned base state)
 x = (-Nx/2:Nx/2-1)*dx;
 
 % Zero mean white noise
-u0 = mass + 0.01 * (rand(1, Nx) - 0.5);
+k0 = 7;
+u0 = mass + cos(2*pi*k0*x/(2*Lx));
 
 u_hat = fft(u0);
 u = u0;
@@ -51,10 +40,10 @@ num_time_steps = length(t);
 
 %% Fourier wavenumbers
 kx = pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
-Laplacian_hat = -kx.^2;
+Laplacian_k = -kx.^2;
 
 % Linear operator:
-L_operator = -(Laplacian_hat.^2);
+L_operator = -(Laplacian_k.^2);
 
 %% 2/3 dealiasing mask
 kx_max = max(abs(kx));
@@ -133,11 +122,11 @@ grid(ax4, 'on');
 drawnow limitrate
 
 %% GIF setup
-video_filename = sprintf('CH_slow_mu_epsilon=%.3f_t0=%0.2f.mp4', epsilon, t0);
+video_filename = sprintf('CH_slow_mu_epsilon=%.3f_t0=%0.2f.avi', epsilon, t0);
 
 if save_video
     % Initialize the MP4 writer using the H.264 codec
-    v = VideoWriter(video_filename, 'MPEG-4');
+    v = VideoWriter(video_filename, 'Motion JPEG AVI');
     v.FrameRate = 45;  % Target frames per second
     v.Quality = 100;   % Highest crispness, lowest compression artifacts
     open(v);
@@ -148,22 +137,22 @@ end
 for n = 2:num_time_steps
     % Stage 1
     u3_nonlinear = u.^3 - mu(t(n))*u;
-    Nu_hat = dealias_mask .* Laplacian_hat .* fft(u3_nonlinear);
+    Nu_hat = dealias_mask .* Laplacian_k .* fft(u3_nonlinear);
     
     % Stage 2
     a_hat = E2.*u_hat + Q.*Nu_hat;
     a = real(ifft(a_hat));
-    Na_hat = dealias_mask .* Laplacian_hat .* fft(a.^3 - mu(t(n))*a);
+    Na_hat = dealias_mask .* Laplacian_k .* fft(a.^3 - mu(t(n))*a);
     
     % Stage 3
     b_hat = E2.*u_hat + Q.*Na_hat;
     b = real(ifft(b_hat));
-    Nb_hat = dealias_mask .* Laplacian_hat .* fft(b.^3 - mu(t(n))*b);
+    Nb_hat = dealias_mask .* Laplacian_k .* fft(b.^3 - mu(t(n))*b);
     
     % Stage 4
     c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
     c = real(ifft(c_hat));
-    Nc_hat = dealias_mask .* Laplacian_hat .* fft(c.^3 - mu(t(n))*c);
+    Nc_hat = dealias_mask .* Laplacian_k .* fft(c.^3 - mu(t(n))*c);
     
     % Final Time Step Combination
     u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;

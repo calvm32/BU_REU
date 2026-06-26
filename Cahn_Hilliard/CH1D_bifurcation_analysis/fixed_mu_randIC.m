@@ -52,10 +52,10 @@ num_time_steps = length(t);
 
 % Fourier wavenumbers
 kx = pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
-Laplacian_hat = -kx.^2;
+Laplacian_k = -kx.^2;
 
 %% Linear operator:
-L_operator = -(Laplacian_hat.^2);
+L_operator = -(Laplacian_k.^2);
 
 %% 2/3 dealiasing mask
 kx_max = max(abs(kx));
@@ -164,22 +164,22 @@ for m = 1:length(alpha)
     for n = 2:num_time_steps
         % Stage 1
         u3_nonlinear = u.^3 - mu*u;
-        Nu_hat = dealias_mask .* Laplacian_hat .* fft(u3_nonlinear);
+        Nu_hat = dealias_mask .* Laplacian_k .* fft(u3_nonlinear);
         
         % Stage 2
         a_hat = E2.*u_hat + Q.*Nu_hat;
         a = real(ifft(a_hat));
-        Na_hat = dealias_mask .* Laplacian_hat .* fft(a.^3 - mu*a);
+        Na_hat = dealias_mask .* Laplacian_k .* fft(a.^3 - mu*a);
         
         % Stage 3
         b_hat = E2.*u_hat + Q.*Na_hat;
         b = real(ifft(b_hat));
-        Nb_hat = dealias_mask .* Laplacian_hat .* fft(b.^3 - mu*b);
+        Nb_hat = dealias_mask .* Laplacian_k .* fft(b.^3 - mu*b);
         
         % Stage 4
         c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
         c = real(ifft(c_hat));
-        Nc_hat = dealias_mask .* Laplacian_hat .* fft(c.^3 - mu*c);
+        Nc_hat = dealias_mask .* Laplacian_k .* fft(c.^3 - mu*c);
         
         % Final Time Step Combination
         u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;

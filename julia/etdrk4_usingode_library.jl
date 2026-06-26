@@ -74,7 +74,7 @@ const dx = 2 * Lx / Nx
 struct CHCache{T1, T2}
     mu::FloatQD
     dealias_mask::T1
-    Laplacian_hat::T2
+    Laplacian_k::T2
     u3_buf::Vector{FloatQD}
 end
 
@@ -93,7 +93,7 @@ function ch_nonlin!(du_hat, u_hat, cache, t)
     
     # Multithreaded application of the dealiasing mask and Laplacian
     Threads.@threads for i in 1:Nx
-        @inbounds du_hat[i] = cache.dealias_mask[i] * cache.Laplacian_hat[i] * u3_hat[i]
+        @inbounds du_hat[i] = cache.dealias_mask[i] * cache.Laplacian_k[i] * u3_hat[i]
     end
 end
 
@@ -108,8 +108,8 @@ function run_simulation(alpha_val::Float64)
     
     # Grid and Operator setup
     kx = vcat(collect(0:Nx÷2-1), collect(-Nx÷2:-1)) .* (π / Lx)
-    Laplacian_hat = .- (kx .^ 2)
-    L_operator = .- (Laplacian_hat .^ 2) # Core linear operator (-k^4)
+    Laplacian_k = .- (kx .^ 2)
+    L_operator = .- (Laplacian_k .^ 2) # Core linear operator (-k^4)
     
     kx_max = maximum(abs.(kx))
     dealias_mask = abs.(kx) .<= (2/3) * kx_max
@@ -126,7 +126,7 @@ function run_simulation(alpha_val::Float64)
     u_hat0 = fft(u0)
 
     # Initialize Cache Object
-    cache = CHCache(mu, dealias_mask, Laplacian_hat, zeros(FloatQD, Nx))
+    cache = CHCache(mu, dealias_mask, Laplacian_k, zeros(FloatQD, Nx))
 
     # 5. OrdinaryDiffEq Setup
     # A SplitODEProblem takes the linear matrix first, then the nonlinear function.

@@ -66,10 +66,10 @@ x = (-Nx/2:Nx/2-1)*dx;
 
 %% Fourier wavenumbers
 kx = 2*pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
-Laplacian_hat = -kx.^2;
+Laplacian_k = -kx.^2;
 
 % Linear operator:
-L_operator = -(Laplacian_hat.^2);
+L_operator = -(Laplacian_k.^2);
 
 %% 2/3 dealiasing mask
 kx_max = max(abs(kx));
@@ -101,7 +101,7 @@ computed_density = zeros(1, num_time_steps);
 computed_density(1) = domainwall_density_computed(u, Lx);
 
 theory_density = zeros(1, num_time_steps);
-theory_density(1) = domainwall_density_theory(t0,Laplacian_hat, u_hat);
+theory_density(1) = domainwall_density_theory(t0,Laplacian_k, u_hat);
 
 energy_hist = zeros(1, num_time_steps);
 energy_hist(1) = free_energy(u0, mu(t0), dx);
@@ -170,22 +170,22 @@ for n = 2:num_time_steps
     
     % Stage 1 (Evaluated at t_{n-1})
     u3_nonlinear = u.^3 - mu(t_prev)*u;
-    Nu_hat = dealias_mask .* Laplacian_hat .* fft(u3_nonlinear);
+    Nu_hat = dealias_mask .* Laplacian_k .* fft(u3_nonlinear);
     
     % Stage 2 (Evaluated at midpoint)
     a_hat = E2.*u_hat + Q.*Nu_hat;
     a = real(ifft(a_hat));
-    Na_hat = dealias_mask .* Laplacian_hat .* fft(a.^3 - mu(t_half)*a);
+    Na_hat = dealias_mask .* Laplacian_k .* fft(a.^3 - mu(t_half)*a);
     
     % Stage 3 (Evaluated at midpoint)
     b_hat = E2.*u_hat + Q.*Na_hat;
     b = real(ifft(b_hat));
-    Nb_hat = dealias_mask .* Laplacian_hat .* fft(b.^3 - mu(t_half)*b);
+    Nb_hat = dealias_mask .* Laplacian_k .* fft(b.^3 - mu(t_half)*b);
     
     % Stage 4 (Evaluated at t_n)
     c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
     c = real(ifft(c_hat));
-    Nc_hat = dealias_mask .* Laplacian_hat .* fft(c.^3 - mu(t_curr)*c);
+    Nc_hat = dealias_mask .* Laplacian_k .* fft(c.^3 - mu(t_curr)*c);
     
     % Final Time Step Combination
     u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;
@@ -193,7 +193,7 @@ for n = 2:num_time_steps
     
     % Update data arrays
     computed_density(n) = domainwall_density_computed(u,Lx);
-    theory_density(n) = domainwall_density_theory(t_curr, Laplacian_hat, u_hat);
+    theory_density(n) = domainwall_density_theory(t_curr, Laplacian_k, u_hat);
     l2_hist(n) = l2_norm_periodic_1D(u_hat, Lx);
 
     % Update figures
