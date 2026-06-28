@@ -12,14 +12,14 @@ clc; clear; close all;
 % 2: density and fourier modes ( plot fourier modes VS. time, plot domain wall density VS. time, plot solution VS. time )
 % 3: analyzing averages for diff. epsilon ( plot theoretical vs. computed values of density, freezout time, and largest wave mode )
 
-type = 3;
+type = 2;
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
 %% Parameters
-epsilon = 0.025; % type == 1 or 2
-epsilon_list = linspace(0.1, 5, 50); % type == 3
+epsilon = 0.025; % for type == 1 or 2
+epsilon_list = linspace(0.1, 5, 50); % for type == 3
 
 plot_diff = false; % valid for type == 3
 

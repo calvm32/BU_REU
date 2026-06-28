@@ -15,7 +15,7 @@ xscale = 8;
 
 Lx = xscale*pi;
 
-Nx = 2^8;
+Nx = 2^10;
 
 dx = 2*Lx/Nx;
 

@@ -85,12 +85,10 @@ switch type
 
         %% IC loop
         for ic = 1:length(IC_modes)
+
             k0 = IC_modes(ic);
+            
             u0 = mass + cos(2*pi*k0*x/(2*Lx)); % + 0.01*(rand(1,Nx)-0.5);
-
-            u_hat = fft(u0);
-            u = u0;
-
             mean_hist = zeros(1, num_time_steps);
             mean_hist(1) = trapz(u0) * dx * 0.5 / Lx;
 
@@ -99,6 +97,9 @@ switch type
             dominate_mode(1) = kx(max_index);
 
             for run = 1:num_runs
+
+                u_hat = fft(u0);
+                u = u0;
                     
                 %% Time loop
                 for n = 2:num_time_steps
@@ -137,7 +138,7 @@ switch type
                 end
 
                 [~,max_index] = max(abs(fft(u-mass)));
-                final_mode = round(kx(max_index));
+                final_mode = round(kx(max_index)*Lx/pi);
 
                 row = find(IC_modes==final_mode);
 
@@ -145,7 +146,7 @@ switch type
                     Heat(row,ic) = Heat(row,ic) + 1;
                 end
 
-                fprintf('done w/ run=%.0f/%.0f; IC tested=%.0f/%.0f', run, num_runs, ic, length(IC_modes));
+                fprintf('done w/ run=%.0f/%.0f; IC tested=%.0f/%.0f\n', run, num_runs, ic, length(IC_modes));
             end
         end
 
@@ -200,9 +201,10 @@ switch type
 
             for ic = 1:num_IC
                 k0 = IC_modes(ic);
-                u0 = mass + cos(2*pi*k0*x/(2*Lx));
 
                 for run = 1:num_runs
+
+                    u0 = mass + cos(2*pi*k0*x/(2*Lx));
 
                     u_hat = fft(u0);
                     u = u0;
@@ -238,7 +240,7 @@ switch type
                     end
 
                     [~, max_index] = max(abs(fft(u - mass)));
-                    final_mode = round(kx(max_index));
+                    final_mode = round(kx(max_index)*Lx/pi);
 
                     row = find(IC_modes == final_mode);
                     if ~isempty(row)
