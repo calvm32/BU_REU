@@ -42,7 +42,7 @@ To navigate the repository, note the following layout:    \
 ├── README.md $$\color{red}\text{YOU ARE HERE}$$    \
 ├── startup.m    \
 └── Utils    \
-&emsp;&emsp;    └── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$    \
+&emsp;&emsp;    └── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
 
 
 Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
