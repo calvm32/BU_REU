@@ -1,5 +1,8 @@
 clc; clear; close all;
 
+%% 2D Cahn-Hilliard with varying mu using Crank-Nicolson
+
+
 %% Parameters
 epsilon = 0.2; % used for scaling mu
 blowup_time = epsilon^(-2/3);

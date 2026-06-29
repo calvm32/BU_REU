@@ -1,5 +1,7 @@
 clc; clear; close all;
 
+%% 1D Cahn-Hilliard with varying mu using gradient-stable method
+
 %% Parameters
 epsilon = 0.05; % used for scaling mu
 blowup_time = epsilon^(-2/3);

@@ -110,8 +110,6 @@ classdef FreezeoutMonitor < SimulationMonitor
             fontsize(lgd2, scale=1.4);
             grid(obj.ax4, 'on');
 
-            drawnow;
-
             % Video setup
             if isfield(obj.params, 'save_video') && obj.params.save_video
                 obj.v = VideoWriter(obj.params.video_filename, 'Motion JPEG AVI');
