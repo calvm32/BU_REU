@@ -34,11 +34,11 @@ To navigate the repository, note the following layout:    \
 │   │   &emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
 │   │   &emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation}\_\text{Monitors}$$    \
 │   ├── Equation1D $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
-│   │   └──  0$\_$simulations    \
+│   │   └──  0_simulations    \
 │   │   &emsp;   └── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
 │   └── Simulation$\_$Monitors    \
 │   &emsp;    └── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
-├── post$\_$processing $$\color{red}\text{Used for converting file formats, e.g} .asv \text{ to } .mp4$$    \
+├── post_processing $$\color{red}\text{Used for converting file formats, e.g} .asv \text{ to } .mp4$$    \
 ├── README.md $$\color{red}\text{YOU ARE HERE}$$    \
 ├── startup.m    \
 └── Utils    \
