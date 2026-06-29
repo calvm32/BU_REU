@@ -36,12 +36,12 @@ To navigate the repository, note the following layout:    \
 │   &emsp;&emsp;├── Equation2D    \
 │   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
 │   &emsp;&emsp;└── Simulation_Monitors    \
-│   &emsp;&emsp;&nbsp;    &emsp;&emsp;└── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
+│   &emsp;&emsp;&nbsp;&nbsp;    &emsp;&emsp;└── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
 ├── post_processing $$\color{red}\text{Used for converting file formats, e.g} .asv \text{ to } .mp4$$    \
 ├── README.md $$\color{red}\text{YOU ARE HERE}$$    \
 ├── startup.m    \
 └── Utils    \
-&emsp;&emsp;&nbsp;└── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
+&emsp;&emsp;&nbsp;&nbsp;└── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
 
 
 Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
