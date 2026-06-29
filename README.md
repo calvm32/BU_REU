@@ -21,8 +21,8 @@ We simulate these with spectral methods and multiple timesteppers, predominately
 To navigate the repository, note the following layout:    \
 .    \
 ├── Equation $$\color{red}\text{e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
-│   ├── Equation1D $$\color{red}\text{Subfolder for 1D or 2D}$$    \
-│   │   ├── 0_simulations    \
+│   &emsp;├── Equation1D $$\color{red}\text{Subfolder for 1D or 2D}$$    \
+│   &emsp;&emsp;│   ├── 0_simulations    \
 │   │   │   ├── $$\color{blue}\text{YOUR SIMULATIONS GO HERE}$$    \
 │   │   │   └── $$\color{red}\text{NOTE: file formats } .asv \text{ and } .mp4 \text{ are UNTRACKED by Git}$$    \
 │   │   ├── analysis    \
