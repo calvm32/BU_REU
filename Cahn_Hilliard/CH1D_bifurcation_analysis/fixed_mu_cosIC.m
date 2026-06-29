@@ -64,7 +64,6 @@ for m = 1:length(k_i)
     params.kx = kx;
     params.Lx = Lx;
     params.k_j = k_j;
-    params.log_xscale = true;
     params.plot_every = plot_every;
     params.save_video = save_video;
     params.video_filename = sprintf('k=%.3f_T=%.0f.mp4', k, T);
