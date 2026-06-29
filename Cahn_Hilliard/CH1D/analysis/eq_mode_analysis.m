@@ -24,7 +24,7 @@ num_runs = 20;
 xscale = 8;
 
 epsilon = 0.025; % type == 0 or 1
-epsilon_list = linspace(0, 0.25, 50); % type == 2 or 3
+epsilon_list = linspace(0, 0.5, 50); % type == 2 or 3
 
 % simulation params
 t0 = -10.0;
@@ -624,8 +624,8 @@ switch type
         xlabel(sprintf('\\epsilon index  (\\epsilon \\in [%.3f, %.3f])', ...
                        epsilon_list(1), epsilon_list(end)))
         ylabel('Eq. mode number')
-        title(sprintf('Equilibrium mode likelihood — random F.ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi', ...
-                      sigma, mu_final, num_runs, xscale))
+        title(sprintf('Equilibrium mode likelihood — random F.ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi,   prob=%.2f', ...
+                      sigma, mu_final, num_runs, xscale, activation_prob))
 
         % Sparse x-tick labels showing actual epsilon values
         tick_step = max(1, floor(num_eps/10));
