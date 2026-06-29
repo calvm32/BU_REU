@@ -84,7 +84,7 @@ classdef DensityL2FreeEnergyMonitor < SimulationMonitor
 
             %% Setup video
             if obj.params.save_video
-                obj.v = VideoWriter(obj.params.video_filename, 'MPEG-4');
+                obj.v = VideoWriter(obj.params.video_filename, 'Motion JPEG AVI');
                 obj.v.FrameRate = 30;
                 obj.v.Quality = 100;
                 open(obj.v);

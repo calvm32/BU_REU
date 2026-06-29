@@ -1,4 +1,4 @@
-function solve_CH1D_OOP()
+function solve_CH1D_ETDRK4()
     %% Parameters & Setup
     epsilon = 0.05;
     blowup_time = epsilon^(-2/3);
@@ -52,7 +52,7 @@ function solve_CH1D_OOP()
     params.kx = kx;
     params.mu = mu;
     params.save_video = true;
-    params.video_filename = sprintf('T=%.0f_epsilon=%.4f.mp4', T, epsilon);
+    params.video_filename = sprintf('T=%.0f_epsilon=%.4f.avi', T, epsilon);
 
     monitor = DensityL2FreeEnergyMonitor(params);
 

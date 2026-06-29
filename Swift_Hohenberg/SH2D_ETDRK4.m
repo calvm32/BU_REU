@@ -68,8 +68,8 @@ L=reshape(L,Ny,Nx); Q=reshape(Q,Ny,Nx); clear LR
 filename = sprintf('SH_mu=%.*f_k=%.*f', 1, mu, 1, k);%name file
 
 if videos == true
-    v = VideoWriter(append(filename, '.mp4'),'MPEG-4');%name the video
-    cross_sec = VideoWriter(append(filename, '_cut.mp4'),'MPEG-4');%name the video
+    v = VideoWriter(append(filename, '.avi'),'Motion JPEG AVI');%name the video
+    cross_sec = VideoWriter(append(filename, '_cut.avi'),'Motion JPEG AVI');%name the video
     open(v);
     open(cross_sec);
 end

@@ -46,7 +46,9 @@ function fixed_mu_cosIC()
         % Zero mean white noise
         noise = 0.0002 * (rand(1, Nx) - 0.5);
         noise = noise - mean(noise);
-        
+        % u0 = mass + noise;
+        % u0_hat = fft(u0);
+
         % Start at k_bif
         u0 = 0.001*cos(k * x) + mass + noise;
         u0_hat = fft(u0);
@@ -67,7 +69,7 @@ function fixed_mu_cosIC()
         params.log_xscale = true;
         params.plot_every = plot_every;
         params.save_video = save_video;
-        params.video_filename = sprintf('k=%.3f_T=%.0f.mp4', k, T);
+        params.video_filename = sprintf('k=%.3f_T=%.0f.avi', k, T);
         params.video_framerate = 60;
 
         monitor = BifurcationMonitor(params);

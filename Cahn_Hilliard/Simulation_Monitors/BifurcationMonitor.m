@@ -82,7 +82,7 @@ classdef BifurcationMonitor < SimulationMonitor
 
             % Video setup
             if isfield(obj.params, 'save_video') && obj.params.save_video
-                obj.v = VideoWriter(obj.params.video_filename, 'MPEG-4');
+                obj.v = VideoWriter(obj.params.video_filename, 'Motion JPEG AVI');
                 obj.v.FrameRate = obj.params.video_framerate;
                 obj.v.Quality = 100;
                 open(obj.v);
