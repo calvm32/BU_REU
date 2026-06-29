@@ -20,8 +20,8 @@ We simulate these with spectral methods and multiple timesteppers, predominately
 
 To navigate the repository, note the following layout:    \
 .    \
-├── $$\color{red}\text{Equation, e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
-│   ├── $$\color{red}\text{Subfolder for 1D or 2D}$$    \
+├── Equation $$\color{red}\text{e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
+│   ├── Equation1D $$\color{red}\text{Subfolder for 1D or 2D}$$    \
 │   │   ├── 0_simulations    \
 │   │   │   ├── $$\color{blue}\text{YOUR SIMULATIONS GO HERE}$$    \
 │   │   │   └── $$\color{red}\text{NOTE: file formats } .asv \text{ and } .mp4 \text{ are UNTRACKED by Git}$$    \
@@ -31,18 +31,18 @@ To navigate the repository, note the following layout:    \
 │   │   ├── Julia    \
 │   │   │   └── $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
 │   │   └── timesteppers    \
-│   │   \t    ├── <span style="color: #FF0000;">BASIC TIMESTEPPERS</span>    \
-│   │   \t    └── <span style="color: #FF0000;">These show juse one run, with various quantities available to plot from Simulation_Monitors</span>    \
-│   ├── <span style="color: #FF0000;">2D Equation</span>    \
+│   │   &emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$ <span style="color: #FF0000;"></span>    \
+│   │   &emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation_Monitors}$$    \
+│   ├── Equation1D $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
 │   │   └──  0_simulations    \
-│   │   \t   └── <span style="color: #FF0000;">Mirrors 1D Equation</span>    \
+│   │   &emsp;   └── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
 │   └── Simulation_Monitors    \
-│   \t    └── <span style="color: #FF0000;">Various relevant quantities, e.g. norms and time scale measurements</span>    \
-├── post_processing <span style="color: #FF0000;">Used for converting file formats, e.g `.asv` to `.mp4`</span>    \
-├── README.md <span style="color: #FF0000;">YOU ARE HERE</span>    \
+│   &emsp;    └── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
+├── post_processing $$\color{red}\text{Used for converting file formats, e.g} .asv \text{ to } .mp4$$    \
+├── README.md $$\color{red}\text{YOU ARE HERE}$$    \
 ├── startup.m    \
 └── Utils    \
-\t    └── <span style="color: #FF0000;">ACTUAL TIMESTEP SOLVERS</span>    \
+&emsp;    └── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$    \
 
 
 Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
