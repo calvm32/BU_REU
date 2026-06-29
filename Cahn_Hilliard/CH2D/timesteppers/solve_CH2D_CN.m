@@ -73,7 +73,7 @@ params.blowup_time = blowup_time;
 params.Laplacian_k = Laplacian_k;
 params.plot_every = plot_every;
 params.save_video = true;
-params.video_filename = ['cahn_hilliard_2D_mu(1)=' num2str(mu(1),'%.2f') '.mp4'];
+params.video_filename = ['cahn_hilliard_2D_mu(1)=' num2str(mu(1),'%.2f') '.avi'];
 
 monitor = CH2DMonitor(params);
 

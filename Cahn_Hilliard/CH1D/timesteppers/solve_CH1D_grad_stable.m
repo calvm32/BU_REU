@@ -61,7 +61,7 @@ params.x = x;
 params.kx = kx;
 params.mu = mu;
 params.save_video = true;
-params.video_filename = ['cahn_hilliard_1D_mu(1)=' num2str(mu(1),'%.2f') '.mp4'];
+params.video_filename = ['cahn_hilliard_1D_mu(1)=' num2str(mu(1),'%.2f') '.avi'];
 
 monitor = DensityL2FreeEnergyMonitor(params);
 

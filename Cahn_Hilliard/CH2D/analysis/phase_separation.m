@@ -67,7 +67,7 @@ params.dx = dx;
 params.dy = dy;
 params.plot_every = plot_every;
 params.save_video = true;
-params.video_filename = ['cahn_hilliard_2D_muIC=' num2str(mu(0),'%.2f') '.mp4'];
+params.video_filename = ['cahn_hilliard_2D_muIC=' num2str(mu(0),'%.2f') '.avi'];
 
 monitor = CH2DMonitor(params);
 
