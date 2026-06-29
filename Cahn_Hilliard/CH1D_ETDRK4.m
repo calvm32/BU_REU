@@ -1,5 +1,7 @@
 clc; clear; close all;
 
+%% 1D Cahn-Hilliard with varying mu using ETDRK4 time-stepping
+
 %% Parameters & Setup
 epsilon = 0.05;
 blowup_time = epsilon^(-2/3);

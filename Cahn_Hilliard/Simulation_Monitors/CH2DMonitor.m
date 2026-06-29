@@ -107,8 +107,6 @@ classdef CH2DMonitor < SimulationMonitor
             end
             grid(obj.ax3, 'on');
 
-            drawnow;
-
             % Video setup
             if isfield(obj.params, 'save_video') && obj.params.save_video
                 obj.v = VideoWriter(obj.params.video_filename, 'MPEG-4');

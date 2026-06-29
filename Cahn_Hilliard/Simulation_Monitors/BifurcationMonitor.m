@@ -1,8 +1,8 @@
 classdef BifurcationMonitor < SimulationMonitor
     %BIFURCATIONMONITOR A monitor for bifurcation and mode surpass analysis.
-    % Displays the solution, dominant Fourier mode history, and the Fourier spectrum.
+    % Displays the solution, L2 norm, dominant Fourier mode history, and the Fourier spectrum.
 
-    properties (Access = private)
+    properties (SetAccess = private)
         params struct
         t_grid (1, :) double
 
@@ -53,7 +53,14 @@ classdef BifurcationMonitor < SimulationMonitor
             % Subplot 1: Solution (Spans the entire top row)
             obj.ax1 = subplot(2,3,[1 2 3]);
             obj.hLine1 = plot(obj.ax1, obj.params.x, u0, 'LineWidth', 1.5);
-            ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu) sqrt(obj.params.mu)]); 
+            
+            % Set limits depending on the value of mu at the last time.
+            if isa(obj.params.mu, 'function_handle')
+                ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu(t_grid(end))) sqrt(obj.params.mu(t_grid(end)))]); 
+            else
+                ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu) sqrt(obj.params.mu)]); 
+            end
+            
             xlabel(obj.ax1, 'x'); 
             ylabel(obj.ax1, 'u');
             obj.hTitle1 = title(obj.ax1, sprintf('t = %.3f', t_grid(1)));
@@ -85,8 +92,6 @@ classdef BifurcationMonitor < SimulationMonitor
             ylabel(obj.ax4, '$|\hat{u}|$', 'Interpreter', 'latex');
             xlim(obj.ax4, [-10, 10]);
             grid(obj.ax4, 'on');
-
-            drawnow;
 
             % Video setup
             if isfield(obj.params, 'save_video') && obj.params.save_video

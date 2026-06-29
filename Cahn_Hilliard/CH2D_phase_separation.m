@@ -1,6 +1,8 @@
 clc; clear; close all;
 image_mode = "count_droplets"; % "count_droplets" or "count_minmax"
 
+%% TODO: Add description
+
 %% Parameters
 mu = @(t) 3;
 t0 = 0.0;

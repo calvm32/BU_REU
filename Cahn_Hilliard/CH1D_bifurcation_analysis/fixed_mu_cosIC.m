@@ -19,7 +19,7 @@ Nx = 2^12;
 
 plot_dt = 4.0; 
 plot_every = round(plot_dt / dt);
-save_video = false;
+save_video = true;
 
 % Find k_j's for initial data
 k_j = pi * [0:7] / Lx;
