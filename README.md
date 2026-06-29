@@ -21,27 +21,27 @@ We simulate these with spectral methods and multiple timesteppers, predominately
 To navigate the repository, note the following layout:    \
 .    \
 ├── Equation $$\color{red}\text{e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
-│   &emsp;├── Equation1D $$\color{red}\text{Subfolder for 1D or 2D}$$    \
-│   &emsp;&emsp;│   ├── 0_simulations    \
-│   │   │   ├── $$\color{blue}\text{YOUR SIMULATIONS GO HERE}$$    \
-│   │   │   └── $$\color{red}\text{NOTE: file formats } .asv \text{ and } .mp4 \text{ are UNTRACKED by Git}$$    \
-│   │   ├── analysis    \
-│   │   │   ├── $$\color{red}\text{THESE FILES ARE USED FOR ANALYSIS}$$    \
-│   │   │   └── $$\color{red}\text{Plots various quantities to better understand the system}$$    \
-│   │   ├── Julia    \
-│   │   │   └── $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
-│   │   └── timesteppers    \
-│   │   &emsp;&emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
-│   │   &emsp;&emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation Monitors}$$    \
-│   ├── Equation2D    \
-│   │   &emsp;&emsp;   └── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
-│   └── Simulation_Monitors    \
-│   &emsp;&emsp;    └── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
+│   &emsp;&emsp;├── Equation1D $$\color{red}\text{Subfolder for 1D or 2D}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;├── 0_simulations    \
+│   &emsp;&emsp;│   &emsp;&emsp;│   &emsp;&emsp;├── $$\color{blue}\text{YOUR SIMULATIONS GO HERE}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{NOTE: file formats } .asv \text{ and } .mp4 \text{ are UNTRACKED by Git}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;├── analysis    \
+│   &emsp;&emsp;│   &emsp;&emsp;│   &emsp;&emsp;├── $$\color{red}\text{THESE FILES ARE USED FOR ANALYSIS}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{Plots various quantities to better understand the system}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;├── Julia    \
+│   &emsp;&emsp;│   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;└── timesteppers    \
+│   &emsp;&emsp;│   &emsp;&emsp;├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
+│   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation Monitors}$$    \
+│   &emsp;&emsp;├── Equation2D    \
+│   &emsp;&emsp;│   &emsp;&emsp;└── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
+│   &emsp;&emsp;└── Simulation_Monitors    \
+│   &emsp;&emsp;    &emsp;&emsp;└── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
 ├── post_processing $$\color{red}\text{Used for converting file formats, e.g} .asv \text{ to } .mp4$$    \
 ├── README.md $$\color{red}\text{YOU ARE HERE}$$    \
 ├── startup.m    \
 └── Utils    \
-&emsp;&emsp;    └── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
+&emsp;&emsp;└── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
 
 
 Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
