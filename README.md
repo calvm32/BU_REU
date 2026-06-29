@@ -20,7 +20,7 @@ We simulate these with spectral methods and multiple timesteppers, predominately
 
 To navigate the repository, note the following layout:
 .
-├── <span style="color: #FF0000;">Equation, e.g. Cahn-Hilliard or Swift-Hohenberg</span>    \
+├── $$\color{red}\text{Equation, e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
 │   ├── <span style="color: #FF0000;">1D Equation</span>    \
 │   │   ├── 0_simulations    \
 │   │   │   ├── <span style="color: #FF0000;">YOUR SIMULATIONS GO HERE</span>    \
@@ -31,18 +31,18 @@ To navigate the repository, note the following layout:
 │   │   ├── Julia    \
 │   │   │   └── <span style="color: #FF0000;">Julia files, ALSO used for analysis</span>    \
 │   │   └── timesteppers    \
-│   │       ├── <span style="color: #FF0000;">BASIC TIMESTEPPERS</span>    \
-│   │       └── <span style="color: #FF0000;">These show juse one run, with various quantities available to plot from Simulation_Monitors</span>    \
+│   │   \t    ├── <span style="color: #FF0000;">BASIC TIMESTEPPERS</span>    \
+│   │   \t    └── <span style="color: #FF0000;">These show juse one run, with various quantities available to plot from Simulation_Monitors</span>    \
 │   ├── <span style="color: #FF0000;">2D Equation</span>    \
 │   │   └──  0_simulations    \
-│   │       └── <span style="color: #FF0000;">Mirrors 1D Equation</span>    \
+│   │   \t   └── <span style="color: #FF0000;">Mirrors 1D Equation</span>    \
 │   └── Simulation_Monitors    \
-│       └── <span style="color: #FF0000;">Various relevant quantities, e.g. norms and time scale measurements</span>    \
+│   \t    └── <span style="color: #FF0000;">Various relevant quantities, e.g. norms and time scale measurements</span>    \
 ├── post_processing <span style="color: #FF0000;">Used for converting file formats, e.g `.asv` to `.mp4`</span>    \
 ├── README.md <span style="color: #FF0000;">YOU ARE HERE</span>    \
 ├── startup.m    \
 └── Utils    \
-    └── <span style="color: #FF0000;">ACTUAL TIMESTEP SOLVERS</span>    \
+\t    └── <span style="color: #FF0000;">ACTUAL TIMESTEP SOLVERS</span>    \
 
 
 Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
