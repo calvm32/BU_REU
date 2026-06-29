@@ -31,7 +31,7 @@ To navigate the repository, note the following layout:    \
 │   │   ├── Julia    \
 │   │   │   └── $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
 │   │   └── timesteppers    \
-│   │   &emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$ <span style="color: #FF0000;"></span>    \
+│   │   &emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
 │   │   &emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation_Monitors}$$    \
 │   ├── Equation1D $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
 │   │   └──  0_simulations    \
