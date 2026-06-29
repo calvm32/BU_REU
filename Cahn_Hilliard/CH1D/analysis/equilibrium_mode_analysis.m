@@ -11,7 +11,7 @@ clc; clear; close all;
 % 2: single mode IC + vary epsilon ( plot 1 but varying in time = epsilon )
 % 3: random IC ( plot x = epsilon VS. y = Eq. mode VS. color = probability )
 
-type = 0;
+type = 3;
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -500,8 +500,8 @@ switch type
         xlabel(sprintf('\\epsilon index  (\\epsilon \\in [%.3f, %.3f])', ...
                        epsilon_list(1), epsilon_list(end)))
         ylabel('Eq. mode number')
-        title(sprintf('Equilibrium mode likelihood — random ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d', ...
-                      sigma, mu_final, num_runs))
+        title(sprintf('Equilibrium mode likelihood — random ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi', ...
+                      sigma, mu_final, num_runs, xscale))
 
         % Sparse x-tick labels showing actual epsilon values
         tick_step = max(1, floor(num_eps/10));

@@ -13,8 +13,11 @@ using Plots
 using Printf
 using Colors
 using Distributions
+using Measures
+using ColorSchemes
 
 MultiFloats.use_bigfloat_transcendentals()
+gr()
 
 # ------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------
@@ -34,40 +37,80 @@ const type = 0
 
 # Shared parameters
 const IC_modes      = 0:10
-const num_runs      = 10
+const num_runs      = 10        # num runs taken for averaging
 
 const epsilon       = 0.025                        # used for type == 0 and type == 1
-const epsilon_list  = range(0.0, 1.5; length=100)  # used for type == 2 or 3
+const epsilon_list  = range(0.000000001, 0.2; length=100)  # used for type == 2 or 3
 
 const t0            = -10.0
 const mu_final      = 2.0
 const dt_float      = 0.1
 const MASS          = 0.0
 
-const lx_float      = num_runs * pi    # half-domain size
+const xscale        = 10
+const lx_float      = xscale * pi    # half-domain size
 const NX            = 2^10
 
 # Threshold for equilibrium detection: relative change in dominant mode is below this
 # for at least `EQ_WINDOW` consecutive steps
 const EQ_REL_TOL    = 1e-4
 const EQ_WINDOW     = 50
+const ETDRK4_QUAD   = 32
+
+const PRECISION = Float64x4
+
+# ------------------------------------------------------------------------------------------
+# Helper: globally-defined plotting measures
+# ------------------------------------------------------------------------------------------
+default(
+    size=(1200,800),
+
+    dpi=200,
+
+    linewidth=2,
+
+    guidefontsize=14,
+    tickfontsize=11,
+    titlefontsize=16,
+
+    legendfontsize=11,
+
+    margin=8mm,
+
+    left_margin=10mm,
+    right_margin=8mm,
+    top_margin=12mm,
+    bottom_margin=10mm,
+
+    gridalpha=0.25,
+
+    framestyle=:box,
+
+    fontfamily="Computer Modern",
+
+    legend=:topright
+)
+
+palette(:batlow)
 
 # ------------------------------------------------------------------------------------------
 # Helper: build ETDRK4 coefficients for the linear bi-Laplacian operator
 # L = -(k^2)^2  (constant-coefficient, autonomous linear part only).
 # ------------------------------------------------------------------------------------------
-function compute_etdrk4_coefficients(L_operator::Vector{Tf},
-                                     dt_float::Float64,
-                                     ::Type{T}) where {Tf, T}
-    dt = T(dt_float)
-    M  = 16          # quadrature points on contour circle
+function compute_etdrk4_coefficients(
+    L_operator::Vector{T},
+    dt::T,
+    ::Type{T};
+    M::Int = 32
+) where {T<:Number}
+
     Nx = length(L_operator)
 
-    imT = complex(zero(T), one(T))
-    r   = [exp(imT * T(π) * (T(k) - T(1//2)) / T(M)) for k in 1:M]
+    imT = complex(one(T) * 0, one(T))
+    r = [exp(imT * T(pi) * (T(k) - T(1//2)) / T(M)) for k in 1:M]
 
-    E  = @. exp(dt * L_operator)
-    E2 = @. exp(dt * L_operator / 2)
+    E  = exp.(dt .* L_operator)
+    E2 = exp.(dt .* L_operator ./ 2)
 
     Q  = zeros(T, Nx)
     f1 = zeros(T, Nx)
@@ -75,8 +118,8 @@ function compute_etdrk4_coefficients(L_operator::Vector{Tf},
     f3 = zeros(T, Nx)
 
     for i in 1:Nx
-        z  = dt * L_operator[i]
-        LR = [z + ri for ri in r]
+        z = dt * L_operator[i]
+        LR = z .+ r
 
         Q[i]  = dt * real(mean((exp.(LR ./ 2) .- 1) ./ LR))
         f1[i] = dt * real(mean((-4 .- LR .+ exp.(LR) .* (4 .- 3 .* LR .+ LR .^ 2)) ./ LR .^ 3))
@@ -93,13 +136,13 @@ end
 #
 # Returns:
 #   u_hist      :: Vector{Vector{Tf}}   — solution snapshots at every step
-#   t_hist      :: Vector{Float64}      — corresponding time values
-#   kdom_hist   :: Vector{Float64}      — dominant wavenumber at each step
-#   l2_hist     :: Vector{Float64}      — L2 norm of u at each step
+#   t_hist      :: Vector{PRECISION}      — corresponding time values
+#   kdom_hist   :: Vector{PRECISION}      — dominant wavenumber at each step
+#   l2_hist     :: Vector{PRECISION}      — L2 norm of u at each step
 # ------------------------------------------------------------------------------------------
 function run_etdrk4(
         u0          :: Vector{Tf},
-        t_vec       :: AbstractVector{Float64},
+        t_vec       :: AbstractVector{PRECISION},
         mu_fn,
         kx          :: Vector{Tf},
         Laplacian_k :: Vector{Tf},
@@ -136,16 +179,16 @@ function run_etdrk4(
     # History arrays (only allocated when needed)
     if store_history
         u_hist    = Vector{Vector{Tf}}(undef, num_steps)
-        t_hist    = Vector{Float64}(undef, num_steps)
-        kdom_hist = Vector{Float64}(undef, num_steps)
-        l2_hist   = Vector{Float64}(undef, num_steps)
+        t_hist    = Vector{PRECISION}(undef, num_steps)
+        kdom_hist = Vector{PRECISION}(undef, num_steps)
+        l2_hist   = Vector{PRECISION}(undef, num_steps)
 
         # Store initial state
         u_hist[1]    = copy(u)
         t_hist[1]    = t_vec[1]
         u_hat_init   = fft(u .- mass)
-        kdom_hist[1] = Float64(kx[argmax(abs.(u_hat_init))])
-        l2_hist[1]   = Float64(sqrt(sum(u .^ 2) * (2 * Lx / Nx)))
+        kdom_hist[1] = kx[argmax(abs.(u_hat_init))] |> PRECISION
+        l2_hist[1]   = (sqrt(sum(u .^ 2) * (2 * Lx / Nx))) |> PRECISION
     end
 
     for n in 2:num_steps
@@ -187,8 +230,8 @@ function run_etdrk4(
             u_hist[n]    = copy(u)
             t_hist[n]    = t_vec[n]
             u_hat_snap   = fft(u .- mass)
-            kdom_hist[n] = Float64(kx[argmax(abs.(u_hat_snap))])
-            l2_hist[n]   = Float64(sqrt(sum(u .^ 2) * (2 * Lx / Nx)))
+            kdom_hist[n] = (kx[argmax(abs.(u_hat_snap))]) |> PRECISION
+            l2_hist[n]   = (sqrt(sum(u .^ 2) * (2 * Lx / Nx))) |> PRECISION
         end
     end
 
@@ -197,7 +240,7 @@ function run_etdrk4(
     else
         # Return only dominant mode of final state (fast path for heatmap sweeps)
         u_hat_final = fft(u .- mass)
-        return Float64(kx[argmax(abs.(u_hat_final))])
+        return (kx[argmax(abs.(u_hat_final))]) |> PRECISION
     end
 end
 
@@ -207,11 +250,11 @@ end
 # ------------------------------------------------------------------------------------------
 function final_dominant_mode(
         u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
-        E, E2, Q, f1, f2, f3, mass, T_type
+        E, E2, Q, f1, f2, f3, mass, PRECISION
     )
     return run_etdrk4(
         u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
-        E, E2, Q, f1, f2, f3, mass, T_type;
+        E, E2, Q, f1, f2, f3, mass, PRECISION;
         store_history=false
     )
 end
@@ -225,25 +268,28 @@ end
 # Returns `nothing` if no equilibrium window is found.
 # ------------------------------------------------------------------------------------------
 function find_equilibrium_time(
-        kdom_hist :: Vector{Float64},
-        t_hist    :: Vector{Float64}
-    ) :: Union{Float64, Nothing}
+        kdom_hist :: Vector{PRECISION},
+        t_hist    :: Vector{PRECISION}
+    ) :: Union{PRECISION, Nothing}
 
     N = length(kdom_hist)
     N < EQ_WINDOW && return nothing
 
+    # Take absolute values to avoid +/- frequency flip-flop noise
+    abs_kdom = abs.(kdom_hist)
+
     for i in EQ_WINDOW:N
 
         # Window ending at i
-        window = kdom_hist[(i-EQ_WINDOW+1):i]
+        window = abs_kdom[(i-EQ_WINDOW+1):i]
 
-        # Has the mode been constant over the whole window?
+        # Has the absolute mode been constant over the whole window?
         if all(==(window[end]), window)
 
             eq_mode = window[end]
 
-            # Return the FIRST time this mode ever appeared
-            first_idx = findfirst(==(eq_mode), kdom_hist)
+            # Return the FIRST time this absolute mode ever appeared
+            first_idx = findfirst(==(eq_mode), abs_kdom)
 
             return t_hist[first_idx]
         end
@@ -251,7 +297,6 @@ function find_equilibrium_time(
 
     return nothing
 end
-
 
 # ------------------------------------------------------------------------------------------
 # Build shared spatial / spectral arrays
@@ -292,15 +337,18 @@ end
 # ------------------------------------------------------------------------------------------
 function run_simulation()
 
-    T_type = Float64          # ← swap to Float64x2 / Float64x4 for higher precision
-
     # Shared grid
-    x, kx, Laplacian_k, L_operator, dealias_mask = build_grid(T_type)
-    Lx   = T_type(lx_float)
-    mass = T_type(MASS)
+    x, kx, Laplacian_k, L_operator, dealias_mask = build_grid(PRECISION)
+    Lx   = PRECISION(lx_float)
+    mass = PRECISION(MASS)
 
     # ETDRK4 coefficients (depend only on L and dt, not on mu)
-    E, E2, Q, f1, f2, f3 = compute_etdrk4_coefficients(L_operator, dt_float, T_type)
+    E, E2, Q, f1, f2, f3 =
+    compute_etdrk4_coefficients(
+        PRECISION.(L_operator),
+        PRECISION(dt_float),
+        PRECISION
+    )
 
     IC_modes_vec = collect(IC_modes)
     num_IC       = length(IC_modes_vec)
@@ -309,19 +357,29 @@ function run_simulation()
     # ------------------------------------------------------------------------------------------
     if type == 0
 
-        eps_val = T_type(epsilon)
+        eps_val = PRECISION(epsilon)
         mu_fn   = t -> eps_val * t
         T_end   = mu_final / eps_val
-        t_vec   = collect(t0 : dt_float : T_end)
+
+        t0_T    = PRECISION(t0)
+        dt_T    = PRECISION(dt_float)
+        T_end_T = PRECISION(T_end)
+        
+        # Old breaking code:
+        # t_vec = [t0_T + i*dt_T for i in 0:floor(Int, (T_end_T - t0_T)/dt_T)]
+
+        # New type-safe, generic code:
+        num_steps = floor(Int, (T_end - t0) / dt_float)
+        t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
         # Single-mode IC: mode k0 = 1
         k0 = 1
-        u0 = @. mass + cos(2 * T_type(π) * T_type(k0) * x / (2 * Lx))
+        u0 = @. mass + cos(2 * PRECISION(π) * PRECISION(k0) * x / (2 * Lx))
 
         println("Running type=0 single trajectory …")
         _, u_hist, t_hist, kdom_hist, l2_hist = run_etdrk4(
             u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
-            E, E2, Q, f1, f2, f3, mass, T_type;
+            E, E2, Q, f1, f2, f3, mass, PRECISION;
             store_history=true
         )
 
@@ -341,20 +399,20 @@ function run_simulation()
         l2_plot   = l2_hist[idx_plot]
         kdom_plot = kdom_hist[idx_plot]
         u_final   = u_hist[end]
-        x_f64     = Float64.(x)
+        x_f64     = PRECISION.(x)
 
         # Fourier spectrum of final state
-        u_hat_final   = fft(u_final .- mass)
-        kx_shifted    = Float64.(fftshift(kx))
-        uhat_shifted  = max.(Float64.(fftshift(abs.(u_hat_final))), 1e-65)
+        u_hat_final   = fft(PRECISION.(u_final .- mass))
+        kx_shifted    = PRECISION.(fftshift(kx))
+        uhat_shifted  = max.(PRECISION.(fftshift(abs.(u_hat_final))), 1e-65)
 
         # Theoretical band: modes with positive linear growth rate sit where
         # L(k) = -(k^2-1)^2 + mu > 0  →  |k| near 1 for small mu.
         # We just mark k=1 reference lines.
-        k_ref = [Float64(π * j / lx_float) for j in 0:6]
+        k_ref = [(π * j / lx_float) for j in 0:6  |> PRECISION ]
 
         # Subplot 1 – solution u(x) at final time
-        p1 = plot(x_f64, Float64.(u_final);
+        p1 = plot(x_f64, PRECISION.(u_final);
             linewidth = 1.5,
             xlabel    = "x",
             ylabel    = "u(x, T)",
@@ -421,15 +479,28 @@ function run_simulation()
         end
 
         # Compose 2×2 layout
-        plt = plot(p1, p2, p3, p4;
-            layout       = (2, 2),
-            size         = (1200, 800),
-            left_margin  = 10Plots.mm,
-            bottom_margin= 8Plots.mm,
-            top_margin   = 4Plots.mm,
-            plot_title   = @sprintf(
-                "Swift-Hohenberg  |  ε=%.4f  t₀=%.1f  mass=%.2f  IC mode=%d",
-                eps_val, t0, MASS, k0))
+        bigtitle = @sprintf(
+            "ε = %.4f     t₀ = %.1f     mass = %.2f     IC mode = %d",
+            eps_val,
+            t0,
+            MASS,
+            k0
+        )
+
+        plt = plot(
+            p1,p2,p3,p4,
+            layout=grid(2,2),
+            size=(1400,900)
+        )
+
+        plot!(
+            plt,
+            plot_title=bigtitle,
+            top_margin=18mm,
+            left_margin=10mm,
+            bottom_margin=10mm,
+            right_margin=4mm
+        )
 
         savefig(plt, "type0_single_run.png")
         println("Saved type0_single_run.png")
@@ -438,21 +509,27 @@ function run_simulation()
     # ------------------------------------------------------------------------------------------
     elseif type == 1
 
-        eps_val = T_type(epsilon)
+        eps_val = PRECISION(epsilon)
         mu_fn   = t -> eps_val * t
         T_end   = mu_final / eps_val
-        t_vec   = collect(t0 : dt_float : T_end)
+
+        t0_T    = PRECISION(t0)
+        dt_T    = PRECISION(dt_float)
+        T_end_T = PRECISION(T_end)
+
+        num_steps = floor(Int, (T_end - t0) / dt_float)
+        t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
         Heat = zeros(num_IC, num_IC)   # Heat[eq_mode_idx, ic_idx]
 
         for (ic_idx, k0) in enumerate(IC_modes_vec)
-            u0 = @. mass + cos(2 * T_type(π) * T_type(k0) * x / (2 * Lx))
+            u0 = @. mass + cos(2 * PRECISION(π) * PRECISION(k0) * x / (2 * Lx))
 
             for run in 1:num_runs
                 kdom = final_dominant_mode(
                     u0, t_vec, mu_fn,
                     kx, Laplacian_k, dealias_mask,
-                    E, E2, Q, f1, f2, f3, mass, T_type
+                    E, E2, Q, f1, f2, f3, mass, PRECISION
                 )
                 final_mode = round(Int, abs(kdom) * Lx / π)
                 eq_idx     = findfirst(==(final_mode), IC_modes_vec)
@@ -471,11 +548,16 @@ function run_simulation()
             clims        = (0.0, 1.0),
             xlabel       = "IC mode number",
             ylabel       = "Eq. mode number",
-            title        = "Likelihood of equilibrium modes reached\nfor various initial conditions",
+            title    = "Equilibrium Mode Likelihood for Single-Mode ICs\n" *
+                       @sprintf("μ_final=%.2f   ε=%d   length=%.0f*2π", mu_final, epsilon, xscale),
             colorbar     = true,
             aspect_ratio = :equal,
             grid         = true,
-            size         = (700, 600))
+            size         = (700, 600),
+            #aspect_ratio=1,
+            yflip=false,
+            colorbar_title="Probability"
+        )
 
         annotate!(p, mean(IC_modes_vec), IC_modes_vec[1] - 1.5,
             text(@sprintf("ε=%.3f   T=%.0f   t₀=%.0f   runs=%d",
@@ -493,19 +575,25 @@ function run_simulation()
         Heat_3d   = zeros(num_IC, num_IC, num_eps)   # [eq_idx, ic_idx, eps_idx]
 
         for (eidx, eps_val) in enumerate(epsilon_list)
-            eps   = T_type(eps_val)
+            eps   = PRECISION(eps_val)
             mu_fn = t -> eps * t
             T_end = eps_val > 0 ? mu_final / eps_val : abs(t0)
-            t_vec = collect(t0 : dt_float : T_end)
+
+            t0_T    = PRECISION(t0)
+            dt_T    = PRECISION(dt_float)
+            T_end_T = PRECISION(T_end)
+
+            num_steps = floor(Int, (T_end - t0) / dt_float)
+            t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
             for (ic_idx, k0) in enumerate(IC_modes_vec)
-                u0 = @. mass + cos(2 * T_type(π) * T_type(k0) * x / (2 * Lx))
+                u0 = @. mass + cos(2 * PRECISION(π) * PRECISION(k0) * x / (2 * Lx))
 
                 for run in 1:num_runs
                     kdom = final_dominant_mode(
                         u0, t_vec, mu_fn,
                         kx, Laplacian_k, dealias_mask,
-                        E, E2, Q, f1, f2, f3, mass, T_type
+                        E, E2, Q, f1, f2, f3, mass, PRECISION
                     )
                     final_mode = round(Int, abs(kdom) * Lx / π)
                     eq_idx     = findfirst(==(final_mode), IC_modes_vec)
@@ -529,13 +617,16 @@ function run_simulation()
                 clims        = (0.0, 1.0),
                 xlabel       = "IC mode number",
                 ylabel       = "Eq. mode number",
-                title        = "Likelihood of equilibrium modes\n" *
-                               @sprintf("ε=%.4f   T=%.0f   t₀=%.0f   runs=%d",
-                                        eps_val, T_end, t0, num_runs),
+                title        = "Equilibrium Mode Likelihood for Single-Mode ICs\n" *
+                                @sprintf("μ_final=%.2f   length=%.0f*2π", mu_final, xscale),
                 colorbar     = true,
                 aspect_ratio = :equal,
                 grid         = true,
-                size         = (700, 600))
+                size         = (700, 600),
+                #aspect_ratio=1,
+                yflip=false,
+                colorbar_title="Probability"
+            )
         end
 
         mp4(anim, "bifurcation_heatmap_type2.mp4"; fps=10)
@@ -556,20 +647,26 @@ function run_simulation()
         Heat = zeros(num_IC, num_eps)
 
         for (eidx, eps_val) in enumerate(epsilon_list)
-            eps   = T_type(eps_val)
+            eps   = PRECISION(eps_val)
             mu_fn = t -> eps * t
             T_end = eps_val > 0 ? mu_final / eps_val : abs(t0)
-            t_vec = collect(t0 : dt_float : T_end)
+
+            t0_T    = PRECISION(t0)
+            dt_T    = PRECISION(dt_float)
+            T_end_T = PRECISION(T_end)
+            
+            num_steps = floor(Int, (T_end - t0) / dt_float)
+            t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
             for run in 1:num_runs
                 # Genuinely random small-amplitude IC (different every run)
-                noise = sigma .* randn(T_type, NX)
+                noise = sigma .* randn(PRECISION, NX)
                 u0    = mass .+ noise
 
                 kdom = final_dominant_mode(
                     u0, t_vec, mu_fn,
                     kx, Laplacian_k, dealias_mask,
-                    E, E2, Q, f1, f2, f3, mass, T_type
+                    E, E2, Q, f1, f2, f3, mass, PRECISION
                 )
                 final_mode = round(Int, abs(kdom) * Lx / π)
                 eq_idx     = findfirst(==(final_mode), IC_modes_vec)
@@ -581,7 +678,7 @@ function run_simulation()
 
         # Normalise so each epsilon column sums to ≤ 1
         col_sums = sum(Heat; dims=1)
-        Heat_norm = Heat ./ max.(col_sums, 1)   # avoid ÷0 when eps≈0
+        Heat_norm = Heat ./ max.(col_sums, eps())  # avoid ÷0 when eps≈0
 
         cmap = dark_blue_white_cmap(num_runs + 1)
 
@@ -593,18 +690,28 @@ function run_simulation()
             clims    = (0.0, 1.0),
             xlabel   = "ε index  (ε ∈ [$(epsilon_list[1]), $(round(epsilon_list[end],digits=2))])",
             ylabel   = "Eq. mode number",
-            title    = "Equilibrium mode likelihood — random ICs\n" *
-                       @sprintf("σ=%.3f   μ_final=%.2f   runs/ε=%d", sigma, mu_final, num_runs),
+            title    = "Equilibrium Mode Likelihood for Random ICs\n" *
+                       @sprintf("σ=%.3f   μ_final=%.2f   runs/ε=%d   length=%.0f*2π", sigma, mu_final, num_runs, xscale),
             colorbar = true,
             grid     = true,
-            size     = (900, 550))
+            size     = (900, 550),
+            aspect_ratio=1,
+            yflip=false,
+            colorbar_title="Probability"
+        )
 
         # Annotate a few epsilon tick labels on x-axis
         tick_step = max(1, num_eps ÷ 10)
         xtick_idx = collect(1:tick_step:num_eps)
+        
         plot!(p;
             xticks = (xtick_idx,
-                      [@sprintf("%.2f", epsilon_list[i]) for i in xtick_idx]))
+                      [@sprintf("%.2f", epsilon_list[i]) for i in xtick_idx]),
+                      
+            top_margin=18mm,
+            left_margin=10mm,
+            bottom_margin=10mm,
+            right_margin=4mm)
 
         savefig(p, "bifurcation_heatmap_type3.png")
         println("Saved bifurcation_heatmap_type3.png")
