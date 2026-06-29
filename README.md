@@ -18,18 +18,18 @@ We simulate these with spectral methods and multiple timesteppers, predominately
 
 ## Repository structure
 
-To navigate the repository, note the following layout:
-.
+To navigate the repository, note the following layout:    \
+.    \
 ├── $$\color{red}\text{Equation, e.g. Cahn-Hilliard or Swift-Hohenberg}$$    \
-│   ├── <span style="color: #FF0000;">1D Equation</span>    \
+│   ├── $$\color{red}\text{Subfolder for 1D or 2D}$$    \
 │   │   ├── 0_simulations    \
-│   │   │   ├── <span style="color: #FF0000;">YOUR SIMULATIONS GO HERE</span>    \
-│   │   │   └── <span style="color: #FF0000;">NOTE: file formats .asv and .mp4 are UNTRACKED by Git</span>    \
+│   │   │   ├── $$\color{blue}\text{YOUR SIMULATIONS GO HERE}$$    \
+│   │   │   └── $$\color{red}\text{NOTE: file formats } .asv \text{ and } .mp4 \text{ are UNTRACKED by Git}$$    \
 │   │   ├── analysis    \
-│   │   │   ├── <span style="color: #FF0000;">THESE FILES ARE USED FOR ANALYSIS</span>    \
-│   │   │   └── <span style="color: #FF0000;">These plot various quantities to better understand the system</span>    \
+│   │   │   ├── $$\color{red}\text{THESE FILES ARE USED FOR ANALYSIS}$$    \
+│   │   │   └── $$\color{red}\text{Plots various quantities to better understand the system}$$    \
 │   │   ├── Julia    \
-│   │   │   └── <span style="color: #FF0000;">Julia files, ALSO used for analysis</span>    \
+│   │   │   └── $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
 │   │   └── timesteppers    \
 │   │   \t    ├── <span style="color: #FF0000;">BASIC TIMESTEPPERS</span>    \
 │   │   \t    └── <span style="color: #FF0000;">These show juse one run, with various quantities available to plot from Simulation_Monitors</span>    \
