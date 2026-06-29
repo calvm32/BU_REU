@@ -27,7 +27,7 @@ MultiFloats.use_bigfloat_transcendentals()
 # 2: single mode IC + vary epsilon ( animated heatmap, epsilon sweeps over time )
 # 3: random IC ( heatmap: x = epsilon, y = Eq. mode, color = probability )
 
-const type = 2
+const type = 0
 
 # ------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------
@@ -219,34 +219,33 @@ end
 
 # ------------------------------------------------------------------------------------------
 # Equilibrium detection
+# Equilibrium mode = the final mode in a window of EQ_WINDOW consecutive identical modes.
 #
-# Returns the TIME at which the dominant mode first stabilises, defined as the first
-# index where the dominant mode has not changed for EQ_WINDOW consecutive steps AND
-# the relative L2-norm change over that window is below EQ_REL_TOL.
-#
-# Returns `nothing` if equilibrium is never reached within the simulation.
+# Returns the FIRST time that this equilibrium mode is reached.
+# Returns `nothing` if no equilibrium window is found.
 # ------------------------------------------------------------------------------------------
 function find_equilibrium_time(
         kdom_hist :: Vector{Float64},
-        l2_hist   :: Vector{Float64},
         t_hist    :: Vector{Float64}
     ) :: Union{Float64, Nothing}
 
     N = length(kdom_hist)
-    N < EQ_WINDOW + 1 && return nothing
+    N < EQ_WINDOW && return nothing
 
-    for i in (EQ_WINDOW + 1):N
-        window_k  = kdom_hist[(i - EQ_WINDOW):i]
-        window_l2 = l2_hist[(i - EQ_WINDOW):i]
+    for i in EQ_WINDOW:N
 
-        # All dominant modes in the window are identical
-        if all(==(window_k[1]), window_k)
-            # Relative change in L2 norm across the window is small
-            l2_range  = maximum(window_l2) - minimum(window_l2)
-            l2_ref    = max(abs(window_l2[1]), 1e-14)
-            if l2_range / l2_ref < EQ_REL_TOL
-                return t_hist[i - EQ_WINDOW]   # return START of the stable window
-            end
+        # Window ending at i
+        window = kdom_hist[(i-EQ_WINDOW+1):i]
+
+        # Has the mode been constant over the whole window?
+        if all(==(window[end]), window)
+
+            eq_mode = window[end]
+
+            # Return the FIRST time this mode ever appeared
+            first_idx = findfirst(==(eq_mode), kdom_hist)
+
+            return t_hist[first_idx]
         end
     end
 
@@ -326,7 +325,7 @@ function run_simulation()
             store_history=true
         )
 
-        t_eq = find_equilibrium_time(kdom_hist, l2_hist, t_hist)
+        t_eq = find_equilibrium_time(kdom_hist, t_hist)
         if isnothing(t_eq)
             println("Equilibrium not detected within simulation window.")
         else
