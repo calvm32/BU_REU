@@ -135,7 +135,7 @@ switch type
         end
 
         % Equilibrium time
-        t_eq = find_equilibrium_time(kdom_hist, l2_hist, t);
+        t_eq = find_equilibrium_time(kdom_hist, t);
         if isnan(t_eq)
             fprintf('Equilibrium not detected within simulation window.\n');
         else
@@ -530,36 +530,37 @@ end
 
 %% Helper: find the time at which the system first reaches equilibrium.
 %
-%  Equilibrium is defined as the first time the dominant mode has been
-%  constant AND the relative L2-norm change has been below EQ_REL_TOL
-%  for EQ_WINDOW consecutive steps.
+% Equilibrium is defined as the first occurrence of a mode that then
+% remains unchanged for EQ_WINDOW consecutive time steps.
 %
-%  Returns NaN if equilibrium is not reached within the simulation.
+% Returns the FIRST time that equilibrium mode is reached.
+% Returns NaN if equilibrium is never detected.
+function t_eq = find_equilibrium_time(kdom_hist, t_vec)
 
-function t_eq = find_equilibrium_time(kdom_hist, l2_hist, t_vec)
+    EQ_WINDOW = 50;
 
-    EQ_WINDOW  = 50;
-    EQ_REL_TOL = 1e-3;
-
-    N    = length(kdom_hist);
+    N = length(kdom_hist);
     t_eq = NaN;
 
-    if N < EQ_WINDOW + 1
+    if N < EQ_WINDOW
         return
     end
 
-    for i = (EQ_WINDOW + 1):N
-        window_k  = kdom_hist(i - EQ_WINDOW : i);
-        window_l2 = l2_hist(i - EQ_WINDOW : i);
+    % Look for the first window of identical modes
+    for i = EQ_WINDOW:N
 
-        % All dominant modes in the window are identical
-        if all(window_k == window_k(1))
-            l2_range = max(window_l2) - min(window_l2);
-            l2_ref   = max(abs(window_l2(1)), 1e-14);
-            if l2_range / l2_ref < EQ_REL_TOL
-                t_eq = t_vec(i - EQ_WINDOW);   % start of the stable window
-                return
-            end
+        window = kdom_hist(i-EQ_WINDOW+1:i);
+
+        if all(window == window(end))
+
+            eq_mode = window(end);
+
+            % Return the FIRST time this mode was ever reached
+            first_idx = find(kdom_hist == eq_mode, 1, 'first');
+
+            t_eq = t_vec(first_idx);
+            return
+
         end
     end
 end
