@@ -9,9 +9,10 @@ clc; clear; close all;
 % 0: single run  ( solution | fourier spectrum / dominant mode | L2 norm )
 % 1: single mode IC ( plot x = IC mode VS. y = Eq. mode VS. color = probability )
 % 2: single mode IC + vary epsilon ( plot 1 but varying in time = epsilon )
-% 3: random IC ( plot x = epsilon VS. y = Eq. mode VS. color = probability )
+% 3: random IC in x ( plot x = epsilon VS. y = Eq. mode VS. color = probability )
+% 4: random IC in Fourier space ( plot x = epsilon VS. y = Eq. mode VS. color = probability )
 
-type = 3;
+type = 4;
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ num_runs = 20;
 xscale = 8;
 
 epsilon = 0.025; % type == 0 or 1
-epsilon_list = log(linspace(1, 3, 50)); % type == 2 or 3
+epsilon_list = linspace(0, 0.25, 50); % type == 2 or 3
 
 % simulation params
 t0 = -10.0;
@@ -522,6 +523,129 @@ switch type
         colorbar
 
         saveas(gcf, 'bifurcation_heatmap_type3.png')
+
+    % ------------------------------------------------------------------------------------------
+    % ------------------------------------------------------------------------------------------
+
+    case 4
+
+        %% Random ICs: sweep epsilon, random small-amplitude ICs each run
+        % Plot: x = epsilon, y = Eq. mode, color = fraction of runs landing there
+        sigma = 0.05;   % amplitude of random IC
+
+        num_eps = length(epsilon_list);
+        num_IC  = length(IC_modes);
+
+        % Heat(eq_mode_idx, eps_idx) — marginalised over random ICs
+        Heat = zeros(num_IC, num_eps);
+
+        for eidx = 1:num_eps
+            eps_val  = epsilon_list(eidx);
+            mu_local = @(t_val) eps_val * t_val;
+            if eps_val > 0
+                T_local = mu_final / eps_val;
+            else
+                T_local = abs(t0);
+            end
+            t_local  = t0:dt:T_local;
+            num_steps_local = length(t_local);
+
+            for run = 1:num_runs
+                % random in Fourier space small-amplitude IC
+                u_hat = zeros(1,Nx);
+
+                % Randomly activate modes
+                activation_prob = 0.15;      % 15% of modes active
+
+                for k = 2:Nx/2
+
+                    if rand < activation_prob
+
+                        a = sigma*(randn + 1i*randn);
+
+                        % positive frequency
+                        u_hat(k) = a;
+
+                        % negative frequency (Hermitian symmetry)
+                        u_hat(Nx-k+2) = conj(a);
+
+                    end
+
+                end
+
+                u_hat(1) = 0; % 0 mode = 0
+                u_hat(Nx/2+1) = 0; % nyquist mode real
+                u = real(ifft(u_hat));
+
+                for n = 2:num_steps_local
+                    t_prev = t_local(n-1);
+                    t_half = t_prev + dt/2;
+                    t_curr = t_local(n);
+
+                    u3_nonlinear = u.^3 - mu_local(t_prev)*u;
+                    Nu_hat = dealias_mask .* Laplacian_k .* fft(u3_nonlinear);
+
+                    a_hat = E2.*u_hat + Q.*Nu_hat;
+                    a = real(ifft(a_hat));
+                    Na_hat = dealias_mask .* Laplacian_k .* fft(a.^3 - mu_local(t_half)*a);
+
+                    b_hat = E2.*u_hat + Q.*Na_hat;
+                    b = real(ifft(b_hat));
+                    Nb_hat = dealias_mask .* Laplacian_k .* fft(b.^3 - mu_local(t_half)*b);
+
+                    c_hat = E2.*a_hat + Q.*(2*Nb_hat - Nu_hat);
+                    c = real(ifft(c_hat));
+                    Nc_hat = dealias_mask .* Laplacian_k .* fft(c.^3 - mu_local(t_curr)*c);
+
+                    u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;
+                    u = real(ifft(u_hat));
+                end
+
+                [~, max_index] = max(abs(fft(u - mass)));
+                final_mode = round(kx(max_index)*Lx/pi);
+
+                row = find(IC_modes == final_mode);
+                if ~isempty(row)
+                    Heat(row, eidx) = Heat(row, eidx) + 1;
+                end
+            end
+
+            fprintf('epsilon idx %d/%d done\n', eidx, num_eps);
+        end
+
+        % Normalise each epsilon column so values are fractions in [0,1]
+        col_sums = sum(Heat, 1);
+        Heat_norm = Heat ./ max(col_sums, 1);
+
+        %% Plotting
+        figure('Position', [100 100 900 550])
+        imagesc(1:num_eps, IC_modes, Heat_norm)
+        axis xy
+        xlabel(sprintf('\\epsilon index  (\\epsilon \\in [%.3f, %.3f])', ...
+                       epsilon_list(1), epsilon_list(end)))
+        ylabel('Eq. mode number')
+        title(sprintf('Equilibrium mode likelihood — random F.ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi', ...
+                      sigma, mu_final, num_runs, xscale))
+
+        % Sparse x-tick labels showing actual epsilon values
+        tick_step = max(1, floor(num_eps/10));
+        xtick_idx = 1:tick_step:num_eps;
+        xticks(xtick_idx)
+        xticklabels(arrayfun(@(e) sprintf('%.3f', e), epsilon_list(xtick_idx), ...
+                             'UniformOutput', false))
+        xtickangle(45)
+
+        levels = num_runs + 1;
+        darkBlue = [0.02 0.12 0.55];
+        white    = [1 1 1];
+        cmap = [linspace(darkBlue(1),white(1),levels)', ...
+                linspace(darkBlue(2),white(2),levels)', ...
+                linspace(darkBlue(3),white(3),levels)'];
+        colormap(flipud(cmap))
+        clim([0 1])
+        colorbar
+
+        saveas(gcf, 'bifurcation_heatmap_type4.png')
 
 end
 

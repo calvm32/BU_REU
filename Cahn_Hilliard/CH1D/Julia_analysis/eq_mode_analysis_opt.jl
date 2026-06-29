@@ -41,7 +41,7 @@ const IC_modes      = 0:10
 const num_runs      = 10        # num runs taken for averaging
 
 const epsilon       = 0.025                        # used for type == 0 and type == 1
-const epsilon_list  = range(0.000000001, 0.2; length=100)  # used for type == 2 or 3
+const epsilon_list  = range(0.00001, 0.2; length=100)  # used for type == 2 or 3
 
 const t0            = -10.0
 const mu_final      = 2.0
@@ -65,30 +65,20 @@ const PRECISION = Float64x4
 # ------------------------------------------------------------------------------------------
 default(
     size=(1200,800),
-
     dpi=200,
-
     linewidth=2,
-
     guidefontsize=14,
     tickfontsize=11,
     titlefontsize=16,
-
     legendfontsize=11,
-
     margin=8mm,
-
     left_margin=10mm,
     right_margin=8mm,
     top_margin=12mm,
     bottom_margin=10mm,
-
     gridalpha=0.25,
-
     framestyle=:box,
-
     fontfamily="Helvetica",
-
     legend=:topright
 )
 
@@ -134,16 +124,12 @@ end
 
 # ------------------------------------------------------------------------------------------
 # Core time-stepper (non-autonomous: mu = mu(t))
-#
-# Returns:
-#   u_hist      :: Vector{Vector{Tf}}   — solution snapshots at every step
-#   t_hist      :: Vector{PRECISION}      — corresponding time values
-#   kdom_hist   :: Vector{PRECISION}      — dominant wavenumber at each step
-#   l2_hist     :: Vector{PRECISION}      — L2 norm of u at each step
 # ------------------------------------------------------------------------------------------
 function run_etdrk4(
         u0          :: Vector{Tf},
-        t_vec       :: AbstractVector{PRECISION},
+        t0_val      :: Tf,
+        dt_val      :: Tf,
+        num_steps   :: Int,
         mu_fn,
         kx          :: Vector{Tf},
         Laplacian_k :: Vector{Tf},
@@ -173,29 +159,28 @@ function run_etdrk4(
     b_hat     = zeros(Complex{Tf}, Nx)
     c_hat     = zeros(Complex{Tf}, Nx)
 
-    num_steps = length(t_vec)
-    Lx        = maximum(abs.(kx)) == 0 ? Tf(lx_float) : Tf(pi / minimum(abs.(kx[kx .!= 0])))
     Lx        = Tf(lx_float)
 
     # History arrays (only allocated when needed)
     if store_history
-        u_hist    = Vector{Vector{Tf}}(undef, num_steps)
-        t_hist    = Vector{PRECISION}(undef, num_steps)
-        kdom_hist = Vector{PRECISION}(undef, num_steps)
-        l2_hist   = Vector{PRECISION}(undef, num_steps)
+        u_hist    = Vector{Vector{Tf}}(undef, num_steps + 1)
+        t_hist    = Vector{PRECISION}(undef, num_steps + 1)
+        kdom_hist = Vector{PRECISION}(undef, num_steps + 1)
+        l2_hist   = Vector{PRECISION}(undef, num_steps + 1)
 
         # Store initial state
         u_hist[1]    = copy(u)
-        t_hist[1]    = t_vec[1]
+        t_hist[1]    = t0_val
         u_hat_init   = fft(u .- mass)
         kdom_hist[1] = kx[argmax(abs.(u_hat_init))] |> PRECISION
         l2_hist[1]   = (sqrt(sum(u .^ 2) * (2 * Lx / Nx))) |> PRECISION
     end
 
-    for n in 2:num_steps
-        t_prev = Tf(t_vec[n-1])
-        t_half = Tf(t_vec[n-1] + dt_float / 2)
-        t_curr = Tf(t_vec[n])
+    for n in 1:num_steps
+        # Compute time on the fly to avoid allocating massive time vectors
+        t_prev = t0_val + Tf(n - 1) * dt_val
+        t_half = t0_val + (Tf(n) - Tf(0.5)) * dt_val
+        t_curr = t0_val + Tf(n) * dt_val
 
         mu_prev = mu_fn(t_prev)
         mu_half = mu_fn(t_half)
@@ -228,18 +213,18 @@ function run_etdrk4(
         u         .= real.(ifft(u_hat))
 
         if store_history
-            u_hist[n]    = copy(u)
-            t_hist[n]    = t_vec[n]
+            u_hist[n+1]    = copy(u)
+            t_hist[n+1]    = t_curr
             u_hat_snap   = fft(u .- mass)
-            kdom_hist[n] = (kx[argmax(abs.(u_hat_snap))]) |> PRECISION
-            l2_hist[n]   = (sqrt(sum(u .^ 2) * (2 * Lx / Nx))) |> PRECISION
+            kdom_hist[n+1] = (kx[argmax(abs.(u_hat_snap))]) |> PRECISION
+            l2_hist[n+1]   = (sqrt(sum(u .^ 2) * (2 * Lx / Nx))) |> PRECISION
         end
     end
 
     if store_history
         return u, u_hist, t_hist, kdom_hist, l2_hist
     else
-        # Return only dominant mode of final state (fast path for heatmap sweeps)
+        # Return only dominant mode of final state
         u_hat_final = fft(u .- mass)
         return (kx[argmax(abs.(u_hat_final))]) |> PRECISION
     end
@@ -250,11 +235,11 @@ end
 # Thin wrapper for heatmap sweeps: returns only the final dominant wavenumber
 # ------------------------------------------------------------------------------------------
 function final_dominant_mode(
-        u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
+        u0, t0_val, dt_val, num_steps, mu_fn, kx, Laplacian_k, dealias_mask,
         E, E2, Q, f1, f2, f3, mass, PRECISION
     )
     return run_etdrk4(
-        u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
+        u0, t0_val, dt_val, num_steps, mu_fn, kx, Laplacian_k, dealias_mask,
         E, E2, Q, f1, f2, f3, mass, PRECISION;
         store_history=false
     )
@@ -263,10 +248,6 @@ end
 
 # ------------------------------------------------------------------------------------------
 # Equilibrium detection
-# Equilibrium mode = the final mode in a window of EQ_WINDOW consecutive identical modes.
-#
-# Returns the FIRST time that this equilibrium mode is reached.
-# Returns `nothing` if no equilibrium window is found.
 # ------------------------------------------------------------------------------------------
 function find_equilibrium_time(
         kdom_hist :: Vector{PRECISION},
@@ -280,16 +261,10 @@ function find_equilibrium_time(
     abs_kdom = abs.(kdom_hist)
 
     for i in EQ_WINDOW:N
-
-        # Window ending at i
         window = abs_kdom[(i-EQ_WINDOW+1):i]
 
-        # Has the absolute mode been constant over the whole window?
         if all(==(window[end]), window)
-
             eq_mode = window[end]
-
-            # Return the FIRST time this absolute mode ever appeared
             abs_kdom_f = Float64.(abs_kdom)
             eq_mode = Float64(eq_mode)
             first_idx = findfirst(==(eq_mode), abs_kdom_f)
@@ -362,18 +337,12 @@ function run_simulation()
 
         eps_val = PRECISION(epsilon)
         mu_fn   = t -> eps_val * t
-        T_end   = mu_final / eps_val
+        T_end = max(mu_final / eps_val, PRECISION(150))
 
         t0_T    = PRECISION(t0)
         dt_T    = PRECISION(dt_float)
-        T_end_T = PRECISION(T_end)
         
-        # Old breaking code:
-        # t_vec = [t0_T + i*dt_T for i in 0:floor(Int, (T_end_T - t0_T)/dt_T)]
-
-        # New type-safe, generic code:
         num_steps = floor(Int, Float64((T_end - t0) / dt_float))
-        t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
         # Single-mode IC: mode k0 = 1
         k0 = 1
@@ -381,7 +350,7 @@ function run_simulation()
 
         println("Running type=0 single trajectory …")
         _, u_hist, t_hist, kdom_hist, l2_hist = run_etdrk4(
-            u0, t_vec, mu_fn, kx, Laplacian_k, dealias_mask,
+            u0, t0_T, dt_T, num_steps, mu_fn, kx, Laplacian_k, dealias_mask,
             E, E2, Q, f1, f2, f3, mass, PRECISION;
             store_history=true
         )
@@ -393,8 +362,6 @@ function run_simulation()
             @printf("Equilibrium reached at t ≈ %.3f\n", t_eq)
         end
 
-        # Plot
-        # Subsample for reasonable plot size (every plot_stride steps)
         plot_stride = max(1, length(t_hist) ÷ 500)
         idx_plot    = 1:plot_stride:length(t_hist)
 
@@ -404,17 +371,12 @@ function run_simulation()
         u_final   = u_hist[end]
         x_f64     = PRECISION.(x)
 
-        # Fourier spectrum of final state
         u_hat_final   = fft(PRECISION.(u_final .- mass))
         kx_shifted    = PRECISION.(fftshift(kx))
         uhat_shifted  = max.(PRECISION.(fftshift(abs.(u_hat_final))), 1e-65)
 
-        # Theoretical band: modes with positive linear growth rate sit where
-        # L(k) = -(k^2-1)^2 + mu > 0  →  |k| near 1 for small mu.
-        # We just mark k=1 reference lines.
         k_ref = [PRECISION(pi * j / lx_float) for j in 0:6]
 
-        # Subplot 1 – solution u(x) at final time
         p1 = plot(x_f64, PRECISION.(u_final);
             linewidth = 1.5,
             xlabel    = "x",
@@ -424,7 +386,6 @@ function run_simulation()
             grid      = true,
             color     = :steelblue)
 
-        # Subplot 2 – Fourier spectrum (log scale)
         p2 = plot(kx_shifted, uhat_shifted;
             linewidth = 1.5,
             yscale    = :log10,
@@ -441,7 +402,6 @@ function run_simulation()
             kj != 0 && vline!(p2, [-kj]; linestyle=:dash, color=:red, alpha=0.4)
         end
 
-        # Subplot 3 – dominant mode vs time (step plot)
         p3 = plot(t_plot, abs.(kdom_plot);
             linetype  = :steppost,
             linewidth = 2.0,
@@ -459,7 +419,6 @@ function run_simulation()
                    label="eq. onset t=$(round(t_eq,digits=2))")
         end
 
-        # Subplot 4 – L2 norm vs time, with equilibrium marker
         p4 = plot(t_plot, l2_plot;
             linewidth = 1.5,
             xlabel    = "t",
@@ -473,7 +432,6 @@ function run_simulation()
                    label=@sprintf("eq. t=%.1f", t_eq))
             annotate!(p4, t_eq, maximum(l2_plot) * 0.9,
                 text(@sprintf("t_eq≈%.1f", t_eq), :left, 8, :green))
-            # Also mark the L2 value at equilibrium onset
             eq_idx = findfirst(>=(t_eq), t_hist)
             if !isnothing(eq_idx)
                 scatter!(p4, [t_hist[eq_idx]], [l2_hist[eq_idx]];
@@ -481,14 +439,7 @@ function run_simulation()
             end
         end
 
-        # Compose 2×2 layout
-        bigtitle = @sprintf(
-            title = "\$\\epsilon=$epsilon,\\;\\t_0=$t_0,\\;mass=$(mass),\\IC mode=$d,\\;\$",
-            eps_val,
-            t0,
-            MASS,
-            k0
-        )
+        bigtitle = "\$\\epsilon=$epsilon,\\;t_0=$t0,\\;mass=$mass,\\;IC\\,mode=$k0\\;\$"
 
         plt = plot(
             p1,p2,p3,p4,
@@ -514,23 +465,21 @@ function run_simulation()
 
         eps_val = PRECISION(epsilon)
         mu_fn   = t -> eps_val * t
-        T_end   = mu_final / eps_val
+        T_end = max(mu_final / eps_val, PRECISION(150))
 
         t0_T    = PRECISION(t0)
         dt_T    = PRECISION(dt_float)
-        T_end_T = PRECISION(T_end)
 
         num_steps = floor(Int, Float64((T_end - t0) / dt_float))
-        t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
-        Heat = zeros(num_IC, num_IC)   # Heat[eq_mode_idx, ic_idx]
+        Heat = zeros(num_IC, num_IC)
 
         for (ic_idx, k0) in enumerate(IC_modes_vec)
             u0 = @. mass + cos(2 * PRECISION(pi) * PRECISION(k0) * x / (2 * Lx))
 
             for run in 1:num_runs
                 kdom = final_dominant_mode(
-                    u0, t_vec, mu_fn,
+                    u0, t0_T, dt_T, num_steps, mu_fn,
                     kx, Laplacian_k, dealias_mask,
                     E, E2, Q, f1, f2, f3, mass, PRECISION
                 )
@@ -557,7 +506,6 @@ function run_simulation()
             aspect_ratio = :equal,
             grid         = true,
             size         = (700, 600),
-            #aspect_ratio=1,
             yflip=false,
             colorbar_title="Probability"
         )
@@ -575,26 +523,24 @@ function run_simulation()
     elseif type == 2
 
         num_eps   = length(epsilon_list)
-        Heat_3d   = zeros(num_IC, num_IC, num_eps)   # [eq_idx, ic_idx, eps_idx]
+        Heat_3d   = zeros(num_IC, num_IC, num_eps)
 
         for (eidx, eps_val) in enumerate(epsilon_list)
             eps   = PRECISION(eps_val)
             mu_fn = t -> eps * t
-            T_end = eps_val > 0 ? mu_final / eps_val : abs(t0)
+            T_end = max(mu_final / eps_val, PRECISION(150))
 
             t0_T    = PRECISION(t0)
             dt_T    = PRECISION(dt_float)
-            T_end_T = PRECISION(T_end)
 
             num_steps = floor(Int, Float64((T_end - t0) / dt_float))
-            t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
             for (ic_idx, k0) in enumerate(IC_modes_vec)
                 u0 = @. mass + cos(2 * PRECISION(pi) * PRECISION(k0) * x / (2 * Lx))
 
                 for run in 1:num_runs
                     kdom = final_dominant_mode(
-                        u0, t_vec, mu_fn,
+                        u0, t0_T, dt_T, num_steps, mu_fn,
                         kx, Laplacian_k, dealias_mask,
                         E, E2, Q, f1, f2, f3, mass, PRECISION
                     )
@@ -612,7 +558,6 @@ function run_simulation()
 
         anim = @animate for eidx in 1:num_eps
             eps_val = epsilon_list[eidx]
-            T_end   = eps_val > 0 ? mu_final / eps_val : abs(t0)
 
             heatmap(
                 IC_modes_vec, IC_modes_vec, Heat_3d[:, :, eidx] ./ num_runs;
@@ -626,7 +571,6 @@ function run_simulation()
                 aspect_ratio = :equal,
                 grid         = true,
                 size         = (700, 600),
-                #aspect_ratio=1,
                 yflip=false,
                 colorbar_title="Probability"
             )
@@ -638,36 +582,27 @@ function run_simulation()
     # ------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------
     elseif type == 3
-        #
-        # Random ICs: for each epsilon, draw `num_runs` random small-amplitude ICs,
-        # run each to final time, and record the dominant equilibrium mode.
-        # Plot: x = epsilon, y = Eq. mode, color = fraction of runs that landed there.
-        #
-        sigma     = 0.05    # amplitude of random IC perturbation
+        sigma     = 0.05
         num_eps   = length(epsilon_list)
 
-        # Heat[eq_mode_idx, eps_idx]  (marginalised over random ICs)
         Heat = zeros(num_IC, num_eps)
 
         for (eidx, eps_val) in enumerate(epsilon_list)
             eps   = PRECISION(eps_val)
             mu_fn = t -> eps * t
-            T_end = eps_val > 0 ? mu_final / eps_val : abs(t0)
+            T_end = max(mu_final / eps_val, PRECISION(150))
 
             t0_T    = PRECISION(t0)
             dt_T    = PRECISION(dt_float)
-            T_end_T = PRECISION(T_end)
             
             num_steps = floor(Int, Float64((T_end - t0) / dt_float))
-            t_vec = [t0_T + i * dt_T for i in 0:num_steps]
 
             for run in 1:num_runs
-                # Genuinely random small-amplitude IC (different every run)
                 noise = sigma .* randn(PRECISION, NX)
                 u0    = mass .+ noise
 
                 kdom = final_dominant_mode(
-                    u0, t_vec, mu_fn,
+                    u0, t0_T, dt_T, num_steps, mu_fn,
                     kx, Laplacian_k, dealias_mask,
                     E, E2, Q, f1, f2, f3, mass, PRECISION
                 )
@@ -679,9 +614,8 @@ function run_simulation()
             @printf("\epsilon idx %3d/%3d done\n", eidx, num_eps)
         end
 
-        # Normalise so each epsilon column sums to ≤ 1
         col_sums = sum(Heat; dims=1)
-        Heat_norm = Heat ./ max.(col_sums, eps())  # avoid ÷0 when eps≈0
+        Heat_norm = Heat ./ max.(col_sums, eps())
 
         cmap = dark_blue_white_cmap(num_runs + 1)
 
@@ -704,7 +638,6 @@ function run_simulation()
             colorbar_title="Probability"
         )
 
-        # Annotate a few epsilon tick labels on x-axis
         tick_step = max(1, num_eps ÷ 10)
         xtick_idx = collect(1:tick_step:num_eps)
         
