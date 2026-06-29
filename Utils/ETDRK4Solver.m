@@ -5,7 +5,6 @@ classdef ETDRK4Solver < Solver
     
     properties
         M int32 {mustBePositive, mustBeFinite} = 16;
-        problem EvolutionProblem % TODO: Generalize 
     end
 
     properties (Access = private)
@@ -19,7 +18,7 @@ classdef ETDRK4Solver < Solver
     end
 
     methods
-        function obj = EvolutionResults(M)
+        function obj = ETDRK4Solver(M)
             % Validate inputs
             arguments
                 M int32 
@@ -36,14 +35,14 @@ classdef ETDRK4Solver < Solver
             end
 
             % Compute ETDRK4 coefficients (vectorize over entries of L_operator)
-            obj.E  = exp(dt * prob.linearOperator);
-            obj.E2 = exp(dt * prob.linearOperator / 2);
+            obj.E  = exp(dt * problem.linearOperator);
+            obj.E2 = exp(dt * problem.linearOperator / 2);
 
             % contour integration constants
             dM = double(obj.M);
             r = exp(1i*pi*((1:dM)-0.5)/dM);
-            Lvec = prob.linearOperator(:);
-            LR = dt*Lvec(:,ones(obj.M,1)) + r(ones(numel(prob.linearOperator),1),:);
+            Lvec = problem.linearOperator(:);
+            LR = dt*Lvec(:,ones(obj.M,1)) + r(ones(numel(problem.linearOperator),1),:);
 
             obj.Q  = dt*real(mean((exp(LR/2)-1)./LR,2)).';
             obj.f1 = dt*real(mean((-4-LR + exp(LR).*(4-3*LR+LR.^2))./LR.^3,2)).';

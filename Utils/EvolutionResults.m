@@ -20,7 +20,7 @@ classdef EvolutionResults
 
     properties (SetAccess = private)
         % Time vector of evaluation points
-        time double {mustBeReal, mustBeFinite, mustBeVector} 
+        time double
 
         % Solution matrix (N-dimensional spatial + 1 temporal dimension)
         solution double 
@@ -30,7 +30,7 @@ classdef EvolutionResults
         function obj = EvolutionResults(time, solution)
             % Validate inputs
             arguments
-                time (1,:) double
+                time (1,:) double  {mustBeReal, mustBeFinite, mustBeVector} 
                 solution double
             end
 

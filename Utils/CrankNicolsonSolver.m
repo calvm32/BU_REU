@@ -1,11 +1,11 @@
 classdef CrankNicolsonSolver < Solver
     %CRANKNICOLSONSOLVER An explicit for nonlinear, semi-explicit linear 
     % time stepper for solving odes/evolution pdes.
-    %   One may specify a dealias_mask to be applied at the end of each step 
+    %   Supports both static and time-varying linear operators.
 
     properties
-        problem EvolutionProblem % TODO: Generalize 
-        % TODO: add dealias_mask option
+        numerator_coeff
+        denominator
     end
 
     methods
@@ -17,6 +17,12 @@ classdef CrankNicolsonSolver < Solver
             end
 
             obj.problem = problem;
+
+            % If linearOperator is static, we can precompute the coefficients
+            if ~isa(problem.linearOperator, 'function_handle')
+                obj.numerator_coeff = 1 + 0.5 * dt * problem.linearOperator;
+                obj.denominator = 1 - 0.5 * dt * problem.linearOperator;
+            end
         end
 
         function [up] = step(obj, u, t, dt)
@@ -31,18 +37,17 @@ classdef CrankNicolsonSolver < Solver
                 error("The problem has not been set");
             end
 
-            for n = 2:length(t)
-                % explicit nonlinear, semi-explicit linear
-                up = ((1 + 0.5 * dt * obj.problem.linearOperator).*u ...
-                    + dt*obj.problem.nonlinearOperator(u, t)) ...
-                    ./ (1 - 0.5*dt*L_operator);
-            
-                % TODO: Support dealias_mask
-                u_hat = dealias_mask .* u_hat;
-
+            % If linearOperator is a function handle, evaluate it dynamically
+            if isa(obj.problem.linearOperator, 'function_handle')
+                L = obj.problem.linearOperator(t);
+                num_coeff = 1 + 0.5 * dt * L;
+                den_coeff = 1 - 0.5 * dt * L;
+            else
+                num_coeff = obj.numerator_coeff;
+                den_coeff = obj.denominator;
             end
+
+            up = (num_coeff .* u + dt * obj.problem.nonlinearOperator(u, t)) ./ den_coeff;
         end
     end
 end
-
-

@@ -1,11 +1,11 @@
 function [sol] = evolution_solve(problem, solver, dt, options)
     arguments
         problem EvolutionProblem % TODO: Generalize
-        solver ETDRK4Solver % TODO: Generalize
+        solver Solver % Generalized to support any Solver subclass
         dt double
 
         options.save_every int32 = 1
-        options.monitors (1,:) cell = {} % Cell array of SimulationMonitor objects    
+        options.monitors (1,:) SimulationMonitor = SimulationMonitor.empty(1,0)   
     end
 
     % Assign the problem to the solver
@@ -14,8 +14,7 @@ function [sol] = evolution_solve(problem, solver, dt, options)
     t_grid = problem.tspan(1) : dt : problem.tspan(2);
     save_indices = 1:options.save_every:length(t_grid);
     num_saves = length(save_indices);
-   
-        
+  
     %% Create solution history buffer
     % Preallocate an (N+1)-Dimensional Array
     sz = size(problem.u0);
@@ -28,15 +27,14 @@ function [sol] = evolution_solve(problem, solver, dt, options)
 
     u = problem.u0;
     u_hist(spatial_idx{:}, 1) = u;
-    t_hist = t(save_indices);
+    t_hist = t_grid(save_indices);
 
     %% Initialize monitors
     for i = 1:length(options.monitors)
-        options.monitors{i}.initialize(problem.u0, t_grid);
+        options.monitors(i).initialize(problem.u0, t_grid);
     end
 
     %% Main loop
-
     save_idx = 1;
     for n = 2 : length(t_grid)
         u = solver.step(u, t_grid(n-1), dt);
@@ -47,16 +45,16 @@ function [sol] = evolution_solve(problem, solver, dt, options)
         end
         
         % Update monitors
-        if ~isempty(options.monitor)
+        if ~isempty(options.monitors)
             for i = 1:length(options.monitors)
-                options.monitors{i}.update(u, t_grid(n));
+                options.monitors(i).update(u, t_grid(n));
             end
         end
     end
 
     %% Finalize monitors
     for i = 1:length(options.monitors)
-        options.monitors{i}.finalize();
+        options.monitors(i).finalize();
     end
 
     sol = EvolutionResults(t_hist, u_hist);

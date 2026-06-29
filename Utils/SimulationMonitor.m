@@ -6,7 +6,7 @@ classdef (Abstract) SimulationMonitor < handle
         initialize(obj, u0, t_grid)
         
         % Called by the solver at specific intervals (e.g., save_every)
-        update(obj, u, t, step_idx)
+        update(obj, u, t)
         
         % Called after the loop finishes (for cleanup, saving videos, etc.)
         finalize(obj)

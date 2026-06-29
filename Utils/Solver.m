@@ -1,4 +1,4 @@
-classdef (Abstract) Solver
+classdef (Abstract) Solver < handle
     %SOLVER Abstract class for evolution equation type solvers
 
     properties
