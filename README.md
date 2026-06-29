@@ -33,7 +33,7 @@ To navigate the repository, note the following layout:    \
 │   │   └── timesteppers    \
 │   │   &emsp;&emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
 │   │   &emsp;&emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation Monitors}$$    \
-│   ├── Equation1D $$\color{red}\text{Julia files, ALSO used for analysis}$$    \
+│   ├── Equation2D    \
 │   │   └──  0_simulations    \
 │   │   &emsp;&emsp;   └── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
 │   └── Simulation_Monitors    \
