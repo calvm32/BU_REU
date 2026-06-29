@@ -11,7 +11,7 @@ clc; clear; close all;
 % 2: single mode IC + vary epsilon ( plot 1 but varying in time = epsilon )
 % 3: random IC ( plot x = epsilon VS. y = Eq. mode VS. color = probability )
 
-type = 2;
+type = 0;
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -97,8 +97,10 @@ switch type
         kdom_hist = zeros(1, num_time_steps);
 
         [~, max_index] = max(abs(fft(u0 - mass)));
-        kdom_hist(1) = kx(max_index);
-        l2_hist(1)   = sqrt(sum(u0.^2) * dx);
+        mode_index = round(abs(kx(max_index))*Lx/pi);
+
+        kdom_hist(1) = mode_index;
+        l2_hist(1)   = sqrt(dx*sum(u0.^2)); % sqrt(sum(u0.^2) * dx);
 
         %% Time loop
         for n = 2:num_time_steps
@@ -124,9 +126,12 @@ switch type
             u_hat = E.*u_hat + f1.*Nu_hat + 2*f2.*(Na_hat + Nb_hat) + f3.*Nc_hat;
             u = real(ifft(u_hat));
 
-            [~, max_index] = max(abs(fft(u - mass)));
-            kdom_hist(n) = kx(max_index);
-            l2_hist(n)   = sqrt(sum(u.^2) * dx);
+            u_centered=u-mean(u);
+            [~, max_index] = max(abs(fft(u_centered))); % replace u - u_mass by u_centered b/c mass not perfectly conserved
+            mode_index = round(abs(kx(max_index))*Lx/pi);
+
+            kdom_hist(n) = mode_index;
+            l2_hist(n)   = sqrt(dx*sum(u.^2)); % sqrt(sum(u.^2) * dx);
         end
 
         % Equilibrium time
@@ -201,7 +206,7 @@ switch type
         title('L_2 norm vs time')
         grid on
 
-        sgtitle(sprintf('Swift-Hohenberg  |  \\epsilon=%.4f  t_0=%.1f  mass=%.2f  IC mode=%d', ...
+        sgtitle(sprintf('\\epsilon=%.4f  t_0=%.1f  mass=%.2f  IC mode=%d', ...
                         epsilon, t0, mass, k0))
 
         saveas(gcf, 'type0_single_run.png')
@@ -317,9 +322,9 @@ switch type
             for ic = 1:num_IC
                 k0 = IC_modes(ic);
 
-                for run = 1:num_runs
+                u0 = mass + cos(2*pi*k0*x/(2*Lx));
 
-                    u0 = mass + cos(2*pi*k0*x/(2*Lx));
+                for run = 1:num_runs
 
                     u_hat = fft(u0);
                     u = u0;
@@ -348,7 +353,8 @@ switch type
                         u = real(ifft(u_hat));
                     end
 
-                    [~, max_index] = max(abs(fft(u - mass)));
+                    u_centered=u-mean(u);
+                    [~, max_index] = max(abs(fft(u_centered)));
                     final_mode = round(kx(max_index)*Lx/pi);
 
                     row = find(IC_modes == final_mode);
@@ -390,7 +396,12 @@ switch type
             ylabel('Eq. mode number')
             title('Likelihood of equilibrium modes reached for various initial conditions');
 
-            T_local = epsilon_list(eidx) > 0 ? mu_final / epsilon_list(eidx) : abs(t0);  % local T for label
+            if epsilon_list(eidx) > 0
+                T_local = mu_final / epsilon_list(eidx);
+            else
+                T_local = abs(t0);
+            end
+
             text(0.5, -0.1, sprintf('Parameters: T = %.0f,  t0 = %.0f, \\epsilon = %.4f\nEach IC ran for %.0f trials', ...
                 T_local, t0, epsilon_list(eidx), num_runs), ...
                 'Units', 'normalized', 'HorizontalAlignment', 'center', 'FontSize', 10);
@@ -428,7 +439,11 @@ switch type
         for eidx = 1:num_eps
             eps_val  = epsilon_list(eidx);
             mu_local = @(t_val) eps_val * t_val;
-            T_local  = eps_val > 0 ? mu_final / eps_val : abs(t0);
+            if eps_val > 0
+                T_local = mu_final / eps_val;
+            else
+                T_local = abs(t0);
+            end
             t_local  = t0:dt:T_local;
             num_steps_local = length(t_local);
 
@@ -524,7 +539,7 @@ end
 function t_eq = find_equilibrium_time(kdom_hist, l2_hist, t_vec)
 
     EQ_WINDOW  = 50;
-    EQ_REL_TOL = 1e-4;
+    EQ_REL_TOL = 1e-3;
 
     N    = length(kdom_hist);
     t_eq = NaN;
