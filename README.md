@@ -34,7 +34,6 @@ To navigate the repository, note the following layout:    \
 │   │   &emsp;&emsp;    ├── $$\color{red}\text{BASIC TIMESTEPPERS}$$    \
 │   │   &emsp;&emsp;    └── $$\color{red}\text{These show just one run, with various quantities available to plot from Simulation Monitors}$$    \
 │   ├── Equation2D    \
-│   │   └──  0_simulations    \
 │   │   &emsp;&emsp;   └── $$\color{red}\text{Mirrors structure of Equation1D}$$    \
 │   └── Simulation_Monitors    \
 │   &emsp;&emsp;    └── $$\color{red}\text{Various relevant quantities, e.g. norms and time scale measurements}$$    \
