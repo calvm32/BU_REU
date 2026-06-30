@@ -21,16 +21,16 @@ clc; clear; close all;
 
 %% Parameters
 
-epsilon  = 0.02;
-mu_final = 2;
-t0       = 0;
+epsilon  = 10^(-4);
+mu_final = 0.5;
+t0       = -0.2 / epsilon;
 T        = mu_final/epsilon;
 
 K = -3:3;
 Nmodes = length(K);
 index_of = @(k) find(K==k);
 
-L = 8; % half-domain size
+L = 10; % half-domain size
 Lx = L*pi;
 
 %% Movie / frame parameters
@@ -176,6 +176,7 @@ for j = 1:length(t)
     % Subplot 2: Fourier spectrum at current mu (Galerkin coefficients)
     subplot(2,2,2)
     stem(K, abs(U(j,:)), 'LineWidth', 1.2)
+    yscale("log");
     xlabel('k'); ylabel('|U_k|')
     title(sprintf('Fourier spectrum, \\mu = %.3f', mu_now))
     xlim([min(K)-0.5 max(K)+0.5])
