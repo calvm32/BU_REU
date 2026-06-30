@@ -110,7 +110,7 @@ for ii = 1:length(EP)
     params.video_filename = sprintf('ep=%.3f_mu0=%.2f.mp4', ep, mu0);
     params.video_framerate = 30;
 
-    monitor = BifurcationMonitor(params);
+    monitor = BifurcationMonitorInMu(params);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);

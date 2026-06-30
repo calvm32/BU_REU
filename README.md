@@ -5,7 +5,7 @@ $$u_t = -\nabla^2 ( \nabla^2 u + \mu u - u^3), \qquad u(x, t_0) = u_0(x), \qquad
 where $\mu$ is a parameter slowly varying with time and $t_0 < 0$. This is derived from the following 2D Swift-Hohenberg equation (SH):
 $$w_t = -(1+ \nabla^2)^2w + \mu w - w^3, \qquad w(x, t_0) = w_0(x), \qquad w(-L, t) = w(L, t).$$    \
 
-We simulate these with spectral methods and multiple timesteppers, predominately in MATLAB but with occassional Julia files to ensure higher precision.
+We simulate these with spectral methods and multiple time steppers, predominately in MATLAB but with occasional Julia files to ensure higher precision.
 
 # How to run
 

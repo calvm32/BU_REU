@@ -1,4 +1,4 @@
-classdef BifurcationMonitor < SimulationMonitor
+classdef BifurcationMonitorInMu < SimulationMonitor
     %BIFURCATIONMONITOR A monitor for bifurcation and mode surpass analysis.
     % Displays the solution, L2 norm, dominant Fourier mode history, and the Fourier spectrum.
 
@@ -30,7 +30,7 @@ classdef BifurcationMonitor < SimulationMonitor
     end
 
     methods
-        function obj = BifurcationMonitor(params)
+        function obj = BifurcationMonitorInMu(params)
             obj.params = params;
         end
 
@@ -69,7 +69,7 @@ classdef BifurcationMonitor < SimulationMonitor
             % Subplot 2: L2 norm
             obj.ax2 = subplot(2,3,4);
             obj.l2_line = semilogy(obj.ax2, 0, NaN, 'LineWidth', 2);
-            xlabel(obj.ax2, 't'); 
+            xlabel(obj.ax2, '\mu'); 
             ylabel(obj.ax2, '||u||_{L^2}');
             title(obj.ax2, 'L2 Norm of u');
             grid(obj.ax2, 'on');
@@ -79,9 +79,9 @@ classdef BifurcationMonitor < SimulationMonitor
             obj.hLine3 = stairs(obj.ax3, obj.dominate_mode(1, 1), obj.dominate_mode(1, 2), 'LineWidth', 2);
             labels = cellstr("k_" + (0:numel(obj.params.k_j)-1));
             yline(obj.ax3, obj.params.k_j, '--r', labels, 'LineWidth', 2);    
-            xlabel(obj.ax3, 't'); 
+            xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
-            xlim(obj.ax3, [t_grid(1), t_grid(end)]);
+            xlim(obj.ax3, obj.params.mu(t_grid([1, end])));
             ylim(obj.ax3, [0, obj.params.k_j(end)]); 
             grid(obj.ax3, 'on');
 
@@ -123,14 +123,14 @@ classdef BifurcationMonitor < SimulationMonitor
             % Update plots
             if mod(obj.step_idx - 1, obj.params.plot_every) == 0
                 obj.hLine1.YData = u;
-                obj.hTitle1.String = sprintf('t = %.4f', t);
+                obj.hTitle1.String = sprintf('mu = %.4f, t = %.4f', obj.params.mu(t), t);
 
-                obj.l2_line.XData = obj.t_grid(1:obj.step_idx);
+                obj.l2_line.XData = obj.params.mu(obj.t_grid(1:obj.step_idx));
                 obj.l2_line.YData = obj.l2_history(1:obj.step_idx);
                 axis(obj.ax2, 'tight');
 
                 valid_modes = obj.dominate_mode(1:obj.dom_mode_ind, :);
-                set(obj.hLine3, 'XData', [valid_modes(:, 1); t], 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
+                set(obj.hLine3, 'XData', obj.params.mu([valid_modes(:, 1); t]), 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
 
                 obj.hFreq.YData = ifftshift(abs(u_hat));
 
