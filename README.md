@@ -3,7 +3,7 @@
 For $u \in [-L,L] \times [t_0, \infty)$, we consider the following 1D Cahn-Hilliard equation (CH):
 $$u_t = -\nabla^2 ( \nabla^2 u + \mu u - u^3), \qquad u(x, t_0) = u_0(x), \qquad u(-L, t) = u(L, t),$$    \
 where $\mu$ is a parameter slowly varying with time and $t_0 < 0$. This is derived from the following 2D Swift-Hohenberg equation (SH):
-$$w_t = -(1+ \nabla^2)^2w + \mu w - w^3, \qquad w(x, t_0) = w_0(x), \qquad w(-L, t) = w(L, t).$$    \
+$$w_t = -(1+ \nabla^2)^2w + \mu w - w^3, \qquad w(x, t_0) = w_0(x), \qquad w(-L, t) = w(L, t).$$    
 
 We simulate these with spectral methods and multiple time steppers, predominately in MATLAB but with occasional Julia files to ensure higher precision.
 
@@ -43,7 +43,9 @@ To navigate the repository, note the following layout:    \
 └── Utils    \
 &emsp;&emsp;&nbsp;&nbsp;└── $$\color{red}\text{ACTUAL TIMESTEP SOLVERS}$$
 
+## Library structure
+The `Utils` folder provides several generic time steppers that can be used used to solve any PDE of the form
+$$u_t = Lu + N(u).$$
+For now, we provide ETDRK4 and Crank-Nicolson, with an addition gradient flow solver speicifically for the fixed parameter Cahn-Hilliard equation. To see a simple example on how these solvers can be used, check out [`solve_CH1D_ETDRK4.m`](https://github.com/calvm32/BU_REU/blob/main/Cahn_Hilliard/CH1D/timesteppers/solve_CH1D_ETDRK4.m).
 
-Additionally, note that certain files contain several different ***types of plots*** all trying to get a better idea of certain structures happening "under the hood", like for example, freezeout analysis plots a number of different quantities like domain wall density, compares those quantities for theoretical and computational, etc.
-
-To run these files, simply read the comment beforehand that describes these different ***types***, and simply change the corresponding value to plot the ***plot type*** you're interested in. Additionally, right below the ***plot type*** description will be a list of parameters, which also should be changed as desired.
+`SimulationMonitors` is an abstract class allowing users to process the solution at intermediate time steps for loggin and plotting. The initialization is called by the solver populating it with the initial data and time grid. The update method is called every time step where the current time and solution are given to the monitor. The solver calls the finalize method at the end, useful for closing videos, for instance. In the example above, [`DensityL2FreeEnergyMonitor`](https://github.com/calvm32/BU_REU/blob/main/Cahn_Hilliard/Simulation_Monitors/DensityL2FreeEnergyMonitor.m) is used to log and plot the solution, the theoritical and compute density, the L2 norm, and the free energy over time. It then saves this plot as a video.
