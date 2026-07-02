@@ -10,10 +10,9 @@ clc; clear; close all;
 %
 % Modes |k|<=3
 %
-% This version evolves everything in mu-space: mu(t) = epsilon*t, and all
+% evolves everything in mu-space: mu(t) = epsilon*t, and all
 % time-series plots (dominant wavenumber, L2 norm) use mu as the x-axis
-% instead of t. The 2x2 panel is rebuilt at each mu-frame and written out
-% as an AVI movie so you can watch the dynamics "running in mu".
+% instead of t. The 2x2 panel is rebuilt at each mu-frame
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -35,14 +34,13 @@ Lx = L*pi;
 
 %% Movie / frame parameters
 
-Nframes        = 200;              % number of evenly-spaced mu-frames
-tspan          = linspace(t0,T,Nframes);   % uniform in t => uniform in mu since mu=eps*t
-mu_vec_target  = epsilon*tspan;            % the mu-axis we evolve over
+Nframes        = 200;                       % number of evenly-spaced mu-frames
+tspan          = linspace(t0,T,Nframes);    % uniform in t => uniform in mu since mu=eps*t
+mu_vec_target  = epsilon*tspan;             % the mu-axis we evolve over
 
-eq_window      = 10;                % # consecutive frames the dominant mode must hold to call it "equilibrium"
+eq_window      = 10;                        % # consecutive frames the dominant mode must hold to call it "equilibrium"
 
 %% Build cubic interaction tensor
-
 C = zeros(Nmodes,Nmodes,Nmodes,Nmodes);
 
 for kk = 1:Nmodes
@@ -66,13 +64,17 @@ for kk = 1:Nmodes
 end
 
 
-% ------------------------------------------------------------------------------------------
-%% Initial condition
-% ------------------------------------------------------------------------------------------
+%% Print the ODE system being solved (human-readable, built from K and C)
 
+print_galerkin_odes(K, C, L);
+
+%% Initial condition
 rng(1)
 
 u0 = 1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
+rk = r_k(k,L,epsilon,t0);
+
+u0(index_of(3)) = rk(t0);
 
 % Make solution real
 u0(index_of(0)) = real(u0(index_of(0)));
@@ -80,11 +82,7 @@ for k=1:3
     u0(index_of(-k)) = conj(u0(index_of(k)));
 end
 
-%% Solve on the prescribed mu-uniform tspan
-% Passing tspan as a vector (rather than [t0 T]) makes ode45 return the
-% solution interpolated exactly at these points. The internal adaptive
-% steps are unaffected/unrestricted in accuracy -- this just controls the
-% *output* sampling, which is what we need for evenly-spaced movie frames.
+%% Solve in mu space
 
 opts = odeset('RelTol',1e-8,'AbsTol',1e-10);
 [t,U] = ode45(@(t,u) rhs(t,u,epsilon,K,C,L), tspan, u0, opts);
@@ -108,15 +106,11 @@ for j=1:length(t)
     Ux(j,:) = real(temp);
 end
 
-%% L2 norm history (consistent normalization: mean-square over domain)
-
+%% L2 norm history
 dx = x(2)-x(1);
 L2_hist = sqrt(trapz(x,Ux.^2,2)/(2*L*pi));   % length(t) x 1
 
 %% Dominant Fourier mode history
-% For the Galerkin solution this is just the |k| with largest |U_k|,
-% excluding the k=0 (mean) mode.
-
 kdom_hist = zeros(length(t),1);
 notzero   = K~=0;
 
@@ -139,14 +133,9 @@ else
     fprintf('Equilibrium (mode selection) first reached at mu = %.4f\n', mu_select);
 end
 
-%% Reference wavenumbers for overlay lines
-
 k_ref = 0:6;     % integer Galerkin modes |k| = 0..3 matter most, but keep a few extra for context
 
-%% ------------------------------------------------------------------------------------------
-%% Build the mu-evolving 2x2 movie
-%% ------------------------------------------------------------------------------------------
-
+%% Build the movie
 vidObj = VideoWriter('galerkin_ch_mu_evolution.avi','Motion JPEG AVI');
 vidObj.FrameRate = 20;
 vidObj.Quality   = 90;
@@ -167,7 +156,7 @@ for j = 1:length(t)
 
     % Subplot 1: real-space solution at current mu
     subplot(2,2,1)
-    plot(x, Ux(j,:), 'LineWidth', 1.5) % , 'Color', [0.18 0.45 0.69]
+    plot(x, Ux(j,:), 'LineWidth', 1.5, 'Color', [0.18 0.45 0.69])
     xlabel('x'); ylabel('u(x)')
     title(sprintf('Real-space solution, \\mu = %.3f', mu_now))
     ylim(ylim_real)
@@ -186,14 +175,14 @@ for j = 1:length(t)
 
     % Subplot 3: dominant wavenumber vs mu (history up to current frame)
     subplot(2,2,3)
-    stairs(mu_vec(1:j), kdom_hist(1:j), 'LineWidth', 2) % , 'Color', [0.85 0.33 0.10]
+    stairs(mu_vec(1:j), kdom_hist(1:j), 'LineWidth', 2, 'Color', [0.49 0.18 0.56])
     hold on
     for kj = k_ref
         yline(kj, '--r', 'Alpha', 0.3)
     end
     if ~isnan(mu_select) && mu_now >= mu_select
-        % xline(mu_select, '-g', 'LineWidth', 1.5, ...
-        %     'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+        xline(mu_select, '-g', 'LineWidth', 1.5, ...
+            'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
     end
     hold off
     xlabel('\mu'); ylabel('dominant |k|')
@@ -204,15 +193,15 @@ for j = 1:length(t)
 
     % Subplot 4: L2 norm vs mu (history up to current frame)
     subplot(2,2,4)
-    plot(mu_vec(1:j), L2_hist(1:j), 'LineWidth', 1.5) % , 'Color', [0.13 0.55 0.55]
+    plot(mu_vec(1:j), L2_hist(1:j), 'LineWidth', 1.5, 'Color', [0.13 0.55 0.55])
     hold on
     if ~isnan(mu_select) && mu_now >= mu_select
-        % xline(mu_select, '--g', 'LineWidth', 1.5, ...
-        %     'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+        xline(mu_select, '--g', 'LineWidth', 1.5, ...
+            'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
         eq_idx = find(mu_vec(1:j) >= mu_select, 1);
-        % if ~isempty(eq_idx)
-        %     plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
-        % end
+        if ~isempty(eq_idx)
+            plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
+        end
     end
     hold off
     xlabel('\mu'); ylabel('||u||_2')
@@ -239,26 +228,26 @@ fprintf('Movie written to galerkin_ch_mu_evolution.avi (%d frames)\n', length(t)
 fig2 = figure('Position',[100 100 1200 800]);
 
 subplot(2,2,1)
-plot(x, Ux(end,:), 'LineWidth', 1.5) % , 'Color', [0.18 0.45 0.69]
+plot(x, Ux(end,:), 'LineWidth', 1.5, 'Color', [0.18 0.45 0.69])
 xlabel('x'); ylabel('u(x)')
 title(sprintf('Real-space solution, \\mu = %.3f', mu_vec(end)))
 grid on
 
 subplot(2,2,2)
-stem(K, abs(U(end,:)), 'filled', 'LineWidth') % , 1.2, 'Color', [0.85 0.33 0.10]
+stem(K, abs(U(end,:)), 'filled', 'LineWidth', 1.2, 'Color', [0.85 0.33 0.10])
 xlabel('k'); ylabel('|U_k|')
 title('Fourier spectrum (final \mu)')
 grid on
 
 subplot(2,2,3)
-stairs(mu_vec, kdom_hist, 'LineWidth', 2) % , 'Color', [0.49 0.18 0.56]
+stairs(mu_vec, kdom_hist, 'LineWidth', 2, 'Color', [0.49 0.18 0.56])
 hold on
 for kj = k_ref
     yline(kj, '--r', 'Alpha', 0.3)
 end
 if ~isnan(mu_select)
-    % xline(mu_select, '-g', 'LineWidth', 1.5, ...
-    %     'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+    xline(mu_select, '-g', 'LineWidth', 1.5, ...
+        'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
 end
 hold off
 xlabel('\mu'); ylabel('dominant |k|')
@@ -266,13 +255,13 @@ title('Dominant wavenumber vs \mu')
 grid on
 
 subplot(2,2,4)
-plot(mu_vec, L2_hist, 'LineWidth', 1.5) % , 'Color', [0.13 0.55 0.55]
+plot(mu_vec, L2_hist, 'LineWidth', 1.5, 'Color', [0.13 0.55 0.55])
 hold on
 if ~isnan(mu_select)
-    % xline(mu_select, '--g', 'LineWidth', 1.5, ...
-    %     'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+    xline(mu_select, '--g', 'LineWidth', 1.5, ...
+        'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
     eq_idx = find(mu_vec >= mu_select, 1);
-    % plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
+    plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
 end
 hold off
 xlabel('\mu'); ylabel('||u||_2')
@@ -286,7 +275,6 @@ close(fig2);
 
 
 %% Functions
-
 function dudt = rhs(t,u,epsilon,K,C,L)
 
     Nmodes = length(K);
@@ -319,15 +307,7 @@ end
 
 function mu_select = find_selection_time(kdom_hist, mu_vec, window)
 % find_selection_time  First mu at which the dominant wavenumber has held
-% a constant value for `window` consecutive samples in a row.
-%
-% This is the same sliding-window stability idea used in
-% find_equilibrium_time elsewhere in your codebase: once kdom_hist(j) has
-% been equal to kdom_hist(j-window+1:j) for `window` consecutive frames,
-% we call mu_vec(j-window+1) the selection (equilibrium) mu -- i.e. the
-% mu at which the *run* of stability began, not where it's confirmed.
-%
-% Returns NaN if no such run of length `window` occurs.
+% a constant value for `window` consecutive samples in a row
 
     N = length(kdom_hist);
     mu_select = NaN;
@@ -344,4 +324,166 @@ function mu_select = find_selection_time(kdom_hist, mu_vec, window)
         end
     end
 
+end
+
+
+function print_galerkin_odes(K, C, L)
+
+    Nmodes = length(K);
+
+    fprintf('\n========================================================\n');
+    fprintf(' Galerkin-projected Cahn-Hilliard system (modes |k| <= %d)\n', max(abs(K)));
+    fprintf(' PDE:  u_t = -d_xx( d_xx u + mu(t) u - u^3 )\n');
+    fprintf(' Domain half-length L = %g  (Lx = %g*pi)\n', L, L);
+    fprintf('========================================================\n\n');
+
+    for kk = 1:Nmodes
+        k = K(kk);
+
+        % ---- collect & group nonlinear (cubic) terms from C ----
+        terms = containers.Map('KeyType','char','ValueType','double');
+
+        for mm = 1:Nmodes
+            for nn = 1:Nmodes
+                for pp = 1:Nmodes
+                    if C(kk,mm,nn,pp) == 1
+                        triplet = sort([K(mm) K(nn) K(pp)]);
+                        key = sprintf('%d_%d_%d', triplet(1), triplet(2), triplet(3));
+                        if isKey(terms, key)
+                            terms(key) = terms(key) + 1;
+                        else
+                            terms(key) = 1;
+                        end
+                    end
+                end
+            end
+        end
+
+        keysList = keys(terms);
+        if isempty(keysList)
+            nl_str = '0';
+        else
+            nl_parts = cell(1,length(keysList));
+            for ii = 1:length(keysList)
+                idxs  = sscanf(keysList{ii}, '%d_%d_%d')';
+                coeff = terms(keysList{ii});
+                nl_parts{ii} = format_monomial(coeff, idxs);
+            end
+            nl_str = strjoin(nl_parts, ' + ');
+        end
+
+        % ---- linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 ----
+        lin_str = format_linear(k, L);
+
+        % ---- prefactor on the bracket, -(k^2/L^2) ----
+        [pn, pd] = simplify_frac(-(k^2), L^2);
+        prefactor_str = format_frac(pn, pd);
+
+        if k == 0
+            fprintf('du_{%d}/dt = -%s * [ %s ]      (mean mode: no linear growth term)\n\n', ...
+                k, format_frac(k^2, L^2), nl_str);
+        else
+            fprintf('du_{%2d}/dt = %s * u_{%d}   +   %s * [ %s ]\n\n', ...
+                k, lin_str, k, prefactor_str, nl_str);
+        end
+    end
+
+    fprintf('========================================================\n');
+    fprintf('Note: u_{-k} = conj(u_k) is enforced by the reality condition;\n');
+    fprintf('      mu is shorthand for mu(t) = epsilon*t.\n');
+    fprintf('========================================================\n\n');
+
+end
+
+
+%% formatting
+
+function s = format_monomial(coeff, idxs)
+% Build a string like "3*u_{-1}*u_{0}^2" from a sorted triplet of mode
+% indices and its multiplicity coefficient.
+
+    uvals = unique(idxs);
+    parts = cell(1,length(uvals));
+    for ii = 1:length(uvals)
+        v   = uvals(ii);
+        cnt = sum(idxs == v);
+        if cnt == 1
+            parts{ii} = sprintf('u_{%d}', v);
+        else
+            parts{ii} = sprintf('u_{%d}^%d', v, cnt);
+        end
+    end
+    monomial = strjoin(parts, '*');
+
+    if coeff == 1
+        s = monomial;
+    else
+        s = sprintf('%d*%s', coeff, monomial);
+    end
+end
+
+function s = format_linear(k, L)
+% Format lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 as an exact reduced
+% fraction expression, e.g. "( -81/4096 + (9/64)*mu )".
+
+    [n1, d1] = simplify_frac(-(k^4), L^4);
+    [n2, d2] = simplify_frac(k^2, L^2);
+
+    term1 = format_frac(n1, d1);
+
+    if n2 == 0
+        s = sprintf('( %s )', term1);
+    else
+        term2 = format_frac(n2, d2);
+        s = sprintf('( %s + %s*mu )', term1, term2);
+    end
+end
+
+function s = format_frac(n, d)
+% Format an integer fraction n/d as a string, simplifying common
+% denominator-of-1 and sign placement.
+
+    [n, d] = simplify_frac(n, d);
+    if n == 0
+        s = '0';
+    elseif d == 1
+        s = sprintf('%d', n);
+    else
+        s = sprintf('%d/%d', n, d);
+    end
+end
+
+function [n, d] = simplify_frac(n, d)
+% Reduce integer fraction n/d by their gcd, keep denominator positive.
+
+    if n == 0
+        d = 1;
+        return
+    end
+    g = gcd(abs(n), abs(d));
+    if g > 0
+        n = n / g;
+        d = d / g;
+    end
+    if d < 0
+        n = -n;
+        d = -d;
+    end
+end
+
+function rfun = r_k(k, L, epsilon, t0)
+    % closed-form solution
+
+    const_term = @(t) (3*sqrt(pi)*k)/(sqrt(epsilon)*L) * exp(-k^6/(epsilon*L^6)) * ...
+            exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 );
+
+    img_term = @(t) ( erfi((sqrt(epsilon)*k/L)*t - k^3/(sqrt(epsilon)*L^3)) ...
+                    - erfi((sqrt(epsilon)*k/L)*t0 - k^3/(sqrt(epsilon)*L^3)) );
+
+    IC_term = @(t) exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 - (2*k^4/(L^4))*t0 + (epsilon*k^2/(L^2)).*t0.^2);
+
+    % IC
+    r_k_0 = 10; %(const_term(t0).*img_term(t0)/(1-IC_term(t0)))^(-1/2); % must be nonzero
+
+    rfun = @(t) (const_term(t).*img_term(t) + r_k_0^(-2)*IC_term(t)).^(-1/2);
 end
