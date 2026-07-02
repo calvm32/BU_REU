@@ -110,7 +110,7 @@ for ii = 1:length(EP)
 
     % Use BifurcationMonitorHeadless if you don't want plotting/video
     % Use BifurcationMonitorInMu if you do
-    monitor = BifurcationMonitorNoPlot(params);
+    monitor = BifurcationMonitorHeadless(params);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
