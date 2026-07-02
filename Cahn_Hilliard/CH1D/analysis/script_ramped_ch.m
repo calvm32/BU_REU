@@ -1,25 +1,24 @@
 clear all; close all;
 
-%$ range of epsilons
-EP = 10.^[-5:0.25:-2];
-EP = 10^-3;%10.^[-4.5:1:-4];
 
+
+% range of epsilons
+EP = 10.^[-4.5:0.5:-3]; %10.^[-4.5:1:-4];
 
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
 MUTHR = zeros(length(EP),1);
 
-
-
-
+%% Save the results of each run (including solution) individually
+save_each_run = true;
 
 
 %% Parameters
 dt = 0.02;
 mass = 0;
-mu0 = -0.2;
-muf = 1.8;
+mu0 = -0.3;
+muf = 2.0;
 muf0 = muf;
 xscale = 10;
 Lx = xscale*pi;
@@ -30,11 +29,10 @@ dx = 2*Lx/Nx;
 x = (-Nx/2:Nx/2-1)*dx;
 
 
-l2_thr = 5e0; %when to say the solution has become large amplitude nonlinear quasistationary state
+l2_thr = 1e0; %when to say the solution has become large amplitude nonlinear quasistationary state
 
 %% Video paramaters
-plot_dt = 20; 
-plot_every = round(plot_dt / dt); % make multiple of dt
+plot_dmu = 0.005; 
 save_video = true;
 
 
@@ -82,12 +80,14 @@ for ii = 1:length(EP)
     ep = EP(ii);
     disp(['Running simulation for epsilon = ', num2str(ep)]);
     if ep < 1e-3
-            muf = 1;
+            muf = 0.5;
         else muf = muf0;
     end
 
     T = (muf - mu0)/ep;
     %muf = mu0+ep*T;%T = (muf - mu0)/ep
+
+    plot_every = round(plot_dmu / ep / dt); % make multiple of dt
 
     mu = @(t) mu0 + t * ep;
 
@@ -107,7 +107,7 @@ for ii = 1:length(EP)
     params.k_j = k_j;
     params.plot_every = plot_every;
     params.save_video = save_video;
-    params.video_filename = sprintf('ep=%.3f_mu0=%.2f.mp4', ep, mu0);
+    params.video_filename = sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0);
     params.video_framerate = 30;
 
     monitor = BifurcationMonitorInMu(params);
@@ -125,18 +125,26 @@ for ii = 1:length(EP)
     j_dom_mode_at_thr = find(dominate_modes(:, 1) < t_thr, 1, 'last');
     time_dom_mode_at_thr = dominate_modes(j_dom_mode_at_thr, 1);
     dom_mode = dominate_modes(j_dom_mode_at_thr, 2);  
-
-
-    DMODE_final(ii) = dominate_modes(end, 2);
+    dom_mode_final = dominate_modes(end, 2);
+    
+    DMODE_final(ii) = dom_mode_final;
     DMODE(ii) = dom_mode;
     MUTHR(ii) = mu_thr;
+    
+    % Save just this run
+    if save_each_run
+        save(sprintf('dom_mode_ep=%.5f_mu0=%.2f.mat', ep, mu0), 'mu_thr', 'dom_mode','dom_mode_final', 'ep', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0', 'sol');
+
+    end
 end
 
 figure(20)
 plot(EP,DMODE,'-o','LineWidth',2)
 
+% Save collective run data
+save('dominate_modes.mat', 'MUTHR', 'DMODE','DMOE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0');
 
-save('dominant_modes.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dt','u0');
+
 
 function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)
     % Computes the j'th frequencies critical mu and associated eigenvalue
