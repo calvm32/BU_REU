@@ -123,7 +123,7 @@ classdef BifurcationMonitorInMu < SimulationMonitor
             % Update plots
             if mod(obj.step_idx - 1, obj.params.plot_every) == 0
                 obj.hLine1.YData = u;
-                obj.hTitle1.String = sprintf('mu = %.4f, t = %.4f', obj.params.mu(t), t);
+                obj.hTitle1.String = sprintf('mu = %.4f, t = %.1f', obj.params.mu(t), t);
 
                 obj.l2_line.XData = obj.params.mu(obj.t_grid(1:obj.step_idx));
                 obj.l2_line.YData = obj.l2_history(1:obj.step_idx);

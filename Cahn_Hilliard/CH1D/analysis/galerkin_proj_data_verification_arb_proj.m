@@ -6,9 +6,9 @@ clc; clear; close all;
 % ------------------------------------------------------------------------------------------
 
 %% Load Full PDE Data
-saved = load('dominant_modes.mat');
+saved = load('dom_mode_ep=0.00010_mu0=-0.20.mat');
 sol = saved.sol;
-epsilon = saved.EP;
+epsilon = saved.EP(1);
 mu0 = saved.mu0;
 
 % Squeeze the solution array to ensure it is cleanly 2D: [modes x time]
@@ -16,9 +16,9 @@ sol_data = squeeze(sol.solution);
 
 % Process PDE data for comparison
 mu_pde = mu0 + epsilon * sol.time;
-amp_pde = abs(sol_data); 
+amp_pde = abs(sol_data) / saved.Nx; 
 
-%% Find the exact index where mu = 0.1 (or any target start time)
+%% Find the exact index where mu = -0.2 (or any target start time)
 target_mu = -0.2;
 [~, idx_start] = min(abs(mu_pde - target_mu));
 mu_start = mu_pde(idx_start);
@@ -29,7 +29,7 @@ fprintf('Initializing Galerkin ODE at mu = %.6f (PDE index %d)\n', mu_start, idx
 mu_final = max(mu_pde); 
 
 % --- CHANGE THIS TO PLOT MORE MODES ---
-K = -5:5; 
+K = -6:6; 
 K_max = max(K);
 % --------------------------------------
 
@@ -71,27 +71,27 @@ end
 u0 = zeros(Nmodes, 1);
 num_pde_modes = size(sol_data, 1) - 1; % Total rows minus 1 (for k=0)
 
-% Extract mean mode (k=0)
-u0(index_of(0)) = real(sol_data(1, idx_start));
+% Extract mean mode (k=0) AND DIVIDE BY Nx
+u0(index_of(0)) = real(sol_data(1, idx_start)) / saved.Nx;
 
 % Extract available higher modes
 for k = 1:min(K_max, num_pde_modes)
-    % Extract the exact complex coefficient from the PDE data at mu_start
-    val = sol_data(k+1, idx_start); 
+    % Extract the exact complex coefficient from the PDE data at mu_start AND DIVIDE BY Nx
+    val = sol_data(k+1, idx_start) / saved.Nx; 
     
     u0(index_of(k))  = val;
     u0(index_of(-k)) = conj(val);
 end
 
 %% Solve the Galerkin ODE
-opts = odeset('RelTol', 1e-8, 'AbsTol', 1e-10);
-[t, U] = ode45(@(t,u) rhs(t,u,epsilon,K,C,L), tspan, u0, opts);
+opts = odeset('RelTol', 1e-14, 'AbsTol', 1e-16);
+[t, U] = ode89(@(t,u) rhs(t,u,epsilon,K,C,L), tspan, u0, opts);
 mu_vec = epsilon * t;   
 
 %% ------------------------------------------------------------------------------------------
 %% Plot Predicted vs True Amplitudes
 %% ------------------------------------------------------------------------------------------
-figure('Color', 'w', 'Position', [200 200 800 500]);
+figure('Position', [200 200 800 500]);
 hold on;
 
 K_plot = min(K_max, num_pde_modes);
