@@ -45,9 +45,7 @@ function galerkin_proj_approx()
     % The "std" and "mean" of our "normal distribution"
     sigma = 1 / sqrt( a);
     mean = - b / (2 * a);
-    
-
-    
+  
 
     r1_est = r0(1) * exp(nu1(mu_grid) - nu1(mu0));
     r2_est = r0(2) * exp(nu2(mu_grid) - nu2(mu0));

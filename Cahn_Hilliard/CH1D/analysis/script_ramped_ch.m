@@ -108,7 +108,7 @@ for ii = 1:length(EP)
     params.video_filename = sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0);
     params.video_framerate = 30;
 
-    % Use BifurcationMonitorNoPlot if you don't want plotting/video
+    % Use BifurcationMonitorHeadless if you don't want plotting/video
     % Use BifurcationMonitorInMu if you do
     monitor = BifurcationMonitorNoPlot(params);
 
