@@ -3,16 +3,14 @@ clear all; close all;
 
 
 % range of epsilons
-EP = 10.^[-4.5:0.5:-3]; %10.^[-4.5:1:-4];
-
+EP = 10.^[-6:0.25:-2]; %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
 MUTHR = zeros(length(EP),1);
 
 %% Save the results of each run (including solution) individually
-save_each_run = true;
-
+save_each_run = false;
 
 %% Parameters
 dt = 0.02;
@@ -110,7 +108,9 @@ for ii = 1:length(EP)
     params.video_filename = sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0);
     params.video_framerate = 30;
 
-    monitor = BifurcationMonitorInMu(params);
+    % Use BifurcationMonitorNoPlot if you don't want plotting/video
+    % Use BifurcationMonitorInMu if you do
+    monitor = BifurcationMonitorNoPlot(params);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
@@ -142,7 +142,7 @@ figure(20)
 plot(EP,DMODE,'-o','LineWidth',2)
 
 % Save collective run data
-save('dominate_modes.mat', 'MUTHR', 'DMODE','DMOE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0');
+save('dominate_modes.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0');
 
 
 

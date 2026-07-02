@@ -1,18 +1,8 @@
-classdef BifurcationMonitorInMu < SimulationMonitor
-    %BIFURCATIONMONITOR A monitor for bifurcation and mode surpass analysis.
+classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
+    %BIFURCATIONMONITORINMU A monitor for bifurcation and mode surpass analysis.
     % Displays the solution, L2 norm, dominant Fourier mode history, and the Fourier spectrum.
 
     properties (SetAccess = private)
-        params struct
-        t_grid (1, :) double
-
-        % Tracking arrays
-        l2_history double
-        dominate_mode double % 2D array: [t, dom_mode]
-        dom_mode_ind = 1
-
-        step_idx = 1
-
         % Plotting handles
         fig
         hLine1
@@ -30,36 +20,17 @@ classdef BifurcationMonitorInMu < SimulationMonitor
     end
 
     methods
-        function obj = BifurcationMonitorInMu(params)
-            obj.params = params;
-        end
-
         function initialize(obj, u0_hat, t_grid)
-            num_steps = length(t_grid);
-            obj.t_grid = t_grid;
-
-            % Initial dominant mode tracking
-            obj.dominate_mode = NaN(num_steps, 2);
-            u0 = real(ifft(u0_hat));
-            [~, max_index] = max(abs(u0_hat - mean(u0)));
-            obj.dominate_mode(1, :) = [t_grid(1), obj.params.kx(max_index)];
-            obj.dom_mode_ind = 1;
-
-            obj.l2_history = zeros(1, num_steps);
-
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
             % Subplot 1: Solution (Spans the entire top row)
             obj.ax1 = subplot(2,3,[1 2 3]);
+            u0 = real(ifft(u0_hat));
             obj.hLine1 = plot(obj.ax1, obj.params.x, u0, 'LineWidth', 1.5);
             
             % Set limits depending on the value of mu at the last time.
-            if isa(obj.params.mu, 'function_handle')
-                ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu(t_grid(end))) sqrt(obj.params.mu(t_grid(end)))]); 
-            else
-                ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu) sqrt(obj.params.mu)]); 
-            end
+            ylim(obj.ax1, 1.2 * [-sqrt(obj.params.mu(t_grid(end))) sqrt(obj.params.mu(t_grid(end)))]);
             
             xlabel(obj.ax1, 'x'); 
             ylabel(obj.ax1, 'u');
@@ -76,7 +47,7 @@ classdef BifurcationMonitorInMu < SimulationMonitor
 
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
-            obj.hLine3 = stairs(obj.ax3, obj.dominate_mode(1, 1), obj.dominate_mode(1, 2), 'LineWidth', 2);
+            obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
             labels = cellstr("k_" + (0:numel(obj.params.k_j)-1));
             yline(obj.ax3, obj.params.k_j, '--r', labels, 'LineWidth', 2);    
             xlabel(obj.ax3, '\mu'); 
@@ -101,24 +72,14 @@ classdef BifurcationMonitorInMu < SimulationMonitor
                 obj.v.Quality = 100;
                 open(obj.v);
             end
-
-            obj.update(u0_hat, t_grid(1));
+            
+            initialize@BifrucationMonitorHeadless(obj, u0_hat, t_grid);
         end
 
         function update(obj, u_hat, t)
+            update@BifrucationMonitorHeadless(obj, u_hat, t);
+
             u = real(ifft(u_hat));
-
-            % L2 computation
-            obj.l2_history(obj.step_idx) = sqrt(obj.params.Lx) * norm(u_hat) / length(u_hat);
-
-            % Dominate mode computation (excludes the mean mode)
-            [~, max_index] = max(abs(u_hat - mean(u)));
-            dom_mode = obj.params.kx(max_index);
-
-            if obj.dom_mode_ind == 0 || obj.dominate_mode(obj.dom_mode_ind, 2) ~= dom_mode
-                obj.dom_mode_ind = obj.dom_mode_ind + 1;
-                obj.dominate_mode(obj.dom_mode_ind, :) = [t, dom_mode];
-            end
 
             % Update plots
             if mod(obj.step_idx - 1, obj.params.plot_every) == 0
@@ -141,8 +102,6 @@ classdef BifurcationMonitorInMu < SimulationMonitor
                     writeVideo(obj.v, frame);
                 end
             end
-
-            obj.step_idx = obj.step_idx + 1;
         end
 
         function finalize(obj)
@@ -152,11 +111,6 @@ classdef BifurcationMonitorInMu < SimulationMonitor
             if isgraphics(obj.fig)
                 close(obj.fig);
             end
-        end
-
-        % Public accessor for dominant mode data (helpful for analytical comparisons in calling scripts)
-        function dominate_mode = get_dominate_mode(obj)
-            dominate_mode = obj.dominate_mode(1:obj.dom_mode_ind, :);
         end
     end
 end

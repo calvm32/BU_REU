@@ -1,7 +1,7 @@
 function galerkin_proj_approx()
     %% This script attempts to numerically solve the Galerkin projection 
-    % for the first three modes. It does not align well with the data.
-    saved = load('dom_mode_ep=0.00010_mu0=-0.30.mat');
+    % for the first three modes. 
+    saved = load('dom_mode_ep=0.00100_mu0=-0.30.mat');
     sol = saved.sol;
     solution = squeeze(sol.solution);
     epsilon = saved.ep;
@@ -42,19 +42,22 @@ function galerkin_proj_approx()
     a = (ktilde2(3) - 3 * ktilde2(1)) / (2 * epsilon);
     b = (3 * ktilde2(1)^2 - ktilde2(3)^2) / epsilon;
     
-    mu0_shift = exp(-3 * nu1(mu0) + nu3(mu0));
-
     % The "std" and "mean" of our "normal distribution"
     sigma = 1 / sqrt( a);
     mean = - b / (2 * a);
     
+
+    
+
     r1_est = r0(1) * exp(nu1(mu_grid) - nu1(mu0));
     r2_est = r0(2) * exp(nu2(mu_grid) - nu2(mu0));
-    r3_est = exp(nu3(mu_grid) - nu3(mu0)) .* ...
-        (r0(3) - ktilde2(3) / epsilon * mu0_shift * r0(1)^3 * exp(b^2 / (4 * a)) * sqrt(pi / (4 * a)) * ...
-        (erf( (mu_grid - mean) / sigma ) - erf( (mu0 - mean) / sigma )));
+    r3_hom = exp(nu3(mu_grid) - nu3(mu0)) .* r0(3);
+
+    C3 = sqrt(pi / (4 * a)) / epsilon * ktilde2(3) * r0(1)^3 * exp(b^2 / (4 * a) - 3* nu1(mu0));
+    r3_particular = C3 * exp(nu3(mu_grid)) .* ...
+        (erf( (mu_grid - mean) / sigma ) - erf( (mu0 - mean) / sigma ));
+    r3_est = r3_hom + r3_particular;
     
-    disp(r3_data)
     % Surpassing times
     % 1, 2 surpassing time
     A = -3 / 2 * ktilde2(1);
@@ -65,9 +68,7 @@ function galerkin_proj_approx()
     % 1, 3 surpassing time
     A = -4 * ktilde2(1);
     B = 80 * ktilde2(1)^2;
-    C0 = sqrt(pi / (4*a)) * ktilde2(3) / epsilon * ...
-        r0(1)^2 * exp(- 3* nu1(mu0) + b^2 / (4 * a)) * ...
-        (1 - erf( (mu0 - mean) / sigma ));
+    C0 = C3 / r0(1) * (1 - erf( (mu0 - mean) / sigma ));
     C = -epsilon * log(C0) - epsilon * nu1(mu0);
     mu_13 = max(roots([A, B, C]));
     

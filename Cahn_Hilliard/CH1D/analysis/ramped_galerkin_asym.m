@@ -4,8 +4,7 @@ load('dominant_modes.mat')
 
 %% This scripts attempts to estimate solutions to the Galerkin projections
 % of the first three modes assuming the amplitude of the first mode is 
-% significantly larger than the other two. This scripts finds that the they
-% do not agree with the data to a significant degree.
+% significantly larger than the other two.
 
 %% 1. Define Parameters and Anonymous Function f
 f = @(k) (k/10)^2; 
