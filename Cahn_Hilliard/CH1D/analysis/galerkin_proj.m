@@ -72,6 +72,9 @@ print_galerkin_odes(K, C, L);
 rng(1)
 
 u0 = 1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
+rk = r_k(k,L,epsilon,t0);
+
+u0(index_of(3)) = rk(t0);
 
 % Make solution real
 u0(index_of(0)) = real(u0(index_of(0)));
@@ -466,4 +469,21 @@ function [n, d] = simplify_frac(n, d)
         n = -n;
         d = -d;
     end
+end
+
+function rfun = r_k(k, L, epsilon, t0)
+    % closed-form solution
+
+    const_term = @(t) (3*sqrt(pi)*k)/(sqrt(epsilon)*L) * exp(-k^6/(epsilon*L^6)) * ...
+            exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 );
+
+    img_term = @(t) ( erfi((sqrt(epsilon)*k/L)*t - k^3/(sqrt(epsilon)*L^3)) ...
+                    - erfi((sqrt(epsilon)*k/L)*t0 - k^3/(sqrt(epsilon)*L^3)) );
+
+    IC_term = @(t) exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 - (2*k^4/(L^4))*t0 + (epsilon*k^2/(L^2)).*t0.^2);
+
+    % IC
+    r_k_0 = 10; %(const_term(t0).*img_term(t0)/(1-IC_term(t0)))^(-1/2); % must be nonzero
+
+    rfun = @(t) (const_term(t).*img_term(t) + r_k_0^(-2)*IC_term(t)).^(-1/2);
 end
