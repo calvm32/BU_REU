@@ -3,7 +3,7 @@ clear all; close all;
 
 
 % range of epsilons
-EP = 10.^[-6:0.25:-2]; %10.^[-4.5:1:-4];
+EP = 10.^[-3:-0.01:-4]; %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -15,8 +15,8 @@ save_each_run = false;
 %% Parameters
 dt = 0.02;
 mass = 0;
-mu0 = -0.3;
-muf = 2.0;
+mu0 = -0.2;
+muf = 0.55;
 muf0 = muf;
 xscale = 10;
 Lx = xscale*pi;
@@ -74,15 +74,17 @@ u_hat0 = fft(u0);
 
 
 %%%%% For loop over range of epsilons
-for ii = 1:length(EP)
+parfor ii = 1:length(EP)
     ep = EP(ii);
     disp(['Running simulation for epsilon = ', num2str(ep)]);
     if ep < 1e-3
-            muf = 0.5;
-        else muf = muf0;
+            muf_temp = 0.55;
+    elseif ep < 10^(-3.5)
+        muf_temp = 0.45;
+    else muf_temp = muf0;
     end
 
-    T = (muf - mu0)/ep;
+    T = (muf_temp - mu0)/ep;
     %muf = mu0+ep*T;%T = (muf - mu0)/ep
 
     plot_every = round(plot_dmu / ep / dt); % make multiple of dt
@@ -98,6 +100,7 @@ for ii = 1:length(EP)
     solver = ETDRK4Solver(16);
 
     % Monitor params
+    params = struct();
     params.mu = mu;
     params.x = x;
     params.kx = kx;
@@ -132,17 +135,16 @@ for ii = 1:length(EP)
     MUTHR(ii) = mu_thr;
     
     % Save just this run
-    if save_each_run
-        save(sprintf('dom_mode_ep=%.5f_mu0=%.2f.mat', ep, mu0), 'mu_thr', 'dom_mode','dom_mode_final', 'ep', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0', 'sol');
-
-    end
+    % if save_each_run
+    %     save(sprintf('dom_mode_ep=%.5f_mu0=%.2f.mat', ep, mu0), 'mu_thr', 'dom_mode','dom_mode_final', 'ep', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0', 'sol');
+    % end
 end
 
-figure(20)
-plot(EP,DMODE,'-o','LineWidth',2)
+% figure(20)
+% plot(EP,DMODE,'-o','LineWidth',2)
 
 % Save collective run data
-save('dominate_modes.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'T', 'plot_dmu','u0');
+save('dominate_modes_densest.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
 
 
 
