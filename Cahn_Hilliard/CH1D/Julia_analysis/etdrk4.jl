@@ -18,6 +18,52 @@ function critical_bifurcation(j, L, mass, ::Type{T}) where {T}
     return mu_j, k_j
 end
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Allocation-free helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+Zero-allocation argmax of |x|² over a complex vector, skipping the first
+element (DC / k=0 component).
+"""
+function argmax_abs2_skip1(arr::AbstractVector{<:Complex})
+    max_val = abs2(arr[2])
+    max_idx = 2
+    @inbounds for i in 3:length(arr)
+        v = abs2(arr[i])
+        if v > max_val
+            max_val = v
+            max_idx = i
+        end
+    end
+    return max_idx
+end
+
+"""
+In-place FFT of a real vector: copies real data into the pre-allocated complex
+buffer `dst` and applies fft! in-place.  Result is left in `dst`.
+"""
+function fft_real!(dst::Vector{Complex{T}}, src::Vector{T}) where {T}
+    @inbounds for i in eachindex(dst, src)
+        dst[i] = Complex{T}(src[i], zero(T))
+    end
+    fft!(dst)
+end
+
+"""
+In-place IFFT: copies `src` into `scratch`, applies ifft! in-place, then
+extracts real parts into `dst`.  `src` is preserved (not aliased with scratch).
+"""
+function ifft_to_real!(dst::Vector{T}, src::Vector{Complex{T}}, scratch::Vector{Complex{T}}) where {T}
+    copyto!(scratch, src)
+    ifft!(scratch)
+    @inbounds for i in eachindex(dst)
+        dst[i] = real(scratch[i])
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 """
 Computes the ETDRK4 integration coefficients using a complex contour integral.
 """
@@ -49,7 +95,8 @@ function compute_etdrk4_coefficients(L_operator, dt_float::Float64, ::Type{T}) w
         sum_f2 = zero(Complex{T})
         sum_f3 = zero(Complex{T})
         
-        for lr in (z .+ r)
+        for k in 1:M            # scalar iteration avoids allocating z .+ r
+            lr = z + r[k]
             exp_lr_2 = exp(lr / 2)
             exp_lr   = exp(lr)
             
@@ -69,20 +116,17 @@ function compute_etdrk4_coefficients(L_operator, dt_float::Float64, ::Type{T}) w
 end
 
 """
-Mutating helper function to compute the Cahn-Hilliard non-linear forcing term N(u) 
-completely in-place, preventing allocations inside the time-stepping engine.
+Allocation-free nonlinear forcing: N̂ = dealias .* Δ .* FFT(u³ − μu).
+Uses `fft_scratch` as a pre-allocated complex buffer for in-place FFT.
 """
-function compute_nonlinear_forcing_hat!(N_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch)
-    @. u3_scratch = u^3 - mu * u
-    
-    # Structural FFT allocation-free assignment (or out-of-place functional fallback)
-    u3_hat = fft(u3_scratch) 
-    
-    @. N_hat = dealias_mask * Laplacian_k * u3_hat
+function compute_nonlinear_forcing_hat!(N_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
+    @. u3_scratch = u * (u * u - mu)
+    fft_real!(fft_scratch, u3_scratch)
+    @. N_hat = dealias_mask * Laplacian_k * fft_scratch
 end
 
 """
-Optimized ETDRK4 Time Stepping Engine utilizing full in-place loop fusion.
+Optimized ETDRK4 Time Stepping Engine with allocation-free time-stepping loop.
 """
 function solve_etdrk4!(
     u::Vector{T}, 
@@ -100,10 +144,15 @@ function solve_etdrk4!(
     
     Nx = length(u)
     
-    # Pre-allocated Performance Workspace Arrays
-    u3_scratch     = zeros(T, Nx)
-    u_minus_mass   = zeros(T, Nx)
-    u_hat_centered = zeros(Complex{T}, Nx)
+    # --- Pre-allocated workspace (real) ---
+    u3_scratch = zeros(T, Nx)
+    a          = zeros(T, Nx)
+    b          = zeros(T, Nx)
+    c          = zeros(T, Nx)
+    
+    # --- Pre-allocated workspace (complex) for in-place FFT/IFFT ---
+    fft_scratch  = zeros(Complex{T}, Nx)
+    ifft_scratch = zeros(Complex{T}, Nx)
     
     Nu_hat = zeros(Complex{T}, Nx)
     Na_hat = zeros(Complex{T}, Nx)
@@ -114,61 +163,53 @@ function solve_etdrk4!(
     b_hat  = zeros(Complex{T}, Nx)
     c_hat  = zeros(Complex{T}, Nx)
     
-    a      = zeros(T, Nx)
-    b      = zeros(T, Nx)
-    c      = zeros(T, Nx)
-    
     # Tracking histories
     u_hist = zeros(Float64, Nx, num_frames)
     u_hat_hist = zeros(Float64, Nx, num_frames)
     
-    # Seed Tracking for the dominant modes
-    @. u_minus_mass = u - mass
-    u_hat_centered .= fft(u_minus_mass)
-    u_hat_centered[1] = 0 
-    max_index = argmax(abs.(u_hat_centered))
+    # Initial FFT of u (one-time allocation for persistent state)
+    fft_real!(fft_scratch, u)
+    u_hat = copy(fft_scratch)
+    
+    # Seed dominant mode tracking using u_hat directly, skipping DC.
+    # fft(u - mass) differs from u_hat only at k=0, and we exclude k=0.
+    max_index = argmax_abs2_skip1(u_hat)
     
     dominate_mode_t = Float64[max(1e-2, t_vec[1])]
-    dominate_mode_k = Float64[abs(kx[max_index])]
+    dominate_mode_k = Float64[abs(Float64(kx[max_index]))]
 
-    # Main Simulation Loop Setup
-    u_hat = fft(u)
-    
     @. u_hist[:, 1] = Float64(u)
     @. u_hat_hist[:, 1] = Float64(abs(u_hat))
 
     for n in 2:num_time_steps
         
-        # --- ETDRK4 In-place Step Formulation ---
+        # --- ETDRK4 stages (allocation-free) ---
         
         # Stage 1
-        compute_nonlinear_forcing_hat!(Nu_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch)
+        compute_nonlinear_forcing_hat!(Nu_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
         # Stage 2 (Predictor step 'a')
         @. a_hat = E2 * u_hat + Q * Nu_hat
-        a .= real.(ifft(a_hat))
-        compute_nonlinear_forcing_hat!(Na_hat, a, mu, Laplacian_k, dealias_mask, u3_scratch)
+        ifft_to_real!(a, a_hat, ifft_scratch)
+        compute_nonlinear_forcing_hat!(Na_hat, a, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
         # Stage 3 (Predictor step 'b')
         @. b_hat = E2 * u_hat + Q * Na_hat
-        b .= real.(ifft(b_hat))
-        compute_nonlinear_forcing_hat!(Nb_hat, b, mu, Laplacian_k, dealias_mask, u3_scratch)
+        ifft_to_real!(b, b_hat, ifft_scratch)
+        compute_nonlinear_forcing_hat!(Nb_hat, b, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
         # Stage 4 (Predictor step 'c')
         @. c_hat = E2 * a_hat + Q * (2 * Nb_hat - Nu_hat)
-        c .= real.(ifft(c_hat))
-        compute_nonlinear_forcing_hat!(Nc_hat, c, mu, Laplacian_k, dealias_mask, u3_scratch)
+        ifft_to_real!(c, c_hat, ifft_scratch)
+        compute_nonlinear_forcing_hat!(Nc_hat, c, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
         # Final Correction Step
         @. u_hat = E * u_hat + f1 * Nu_hat + 2 * f2 * (Na_hat + Nb_hat) + f3 * Nc_hat
-        u .= real.(ifft(u_hat))
+        ifft_to_real!(u, u_hat, ifft_scratch)
         
-        # --- Physics Tracking ---
-        @. u_minus_mass = u - mass
-        u_hat_centered .= fft(u_minus_mass)
-        u_hat_centered[1] = 0 
-        
-        max_index = argmax(abs.(u_hat_centered))
+        # --- Physics Tracking (allocation-free) ---
+        # Use u_hat directly: fft(u-mass) = u_hat with modified DC, which we skip.
+        max_index = argmax_abs2_skip1(u_hat)
         dom_mode  = abs(Float64(kx[max_index]))
 
         if dom_mode != dominate_mode_k[end]
