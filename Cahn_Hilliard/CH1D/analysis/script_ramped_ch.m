@@ -3,7 +3,7 @@ clear all; close all;
 
 
 % range of epsilons
-EP = 10.^[-3:-0.01:-4]; %10.^[-4.5:1:-4];
+EP = 10.^[-4.5]; %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -16,7 +16,7 @@ save_each_run = false;
 dt = 0.02;
 mass = 0;
 mu0 = -0.2;
-muf = 0.55;
+muf = 2.0;
 muf0 = muf;
 xscale = 10;
 Lx = xscale*pi;
@@ -74,15 +74,14 @@ u_hat0 = fft(u0);
 
 
 %%%%% For loop over range of epsilons
-parfor ii = 1:length(EP)
+for ii = 1:length(EP)
     ep = EP(ii);
     disp(['Running simulation for epsilon = ', num2str(ep)]);
     if ep < 1e-3
-            muf_temp = 0.55;
-    elseif ep < 10^(-3.5)
-        muf_temp = 0.45;
+            muf_temp = 1.0;
     else muf_temp = muf0;
     end
+    muf_temp = min(muf_temp, muf0);
 
     T = (muf_temp - mu0)/ep;
     %muf = mu0+ep*T;%T = (muf - mu0)/ep
@@ -113,7 +112,7 @@ parfor ii = 1:length(EP)
 
     % Use BifurcationMonitorHeadless if you don't want plotting/video
     % Use BifurcationMonitorInMu if you do
-    monitor = BifurcationMonitorHeadless(params);
+    monitor = BifurcationMonitorInMu(params);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
@@ -144,7 +143,7 @@ end
 % plot(EP,DMODE,'-o','LineWidth',2)
 
 % Save collective run data
-save('dominate_modes_densest.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
+%save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
 
 
 

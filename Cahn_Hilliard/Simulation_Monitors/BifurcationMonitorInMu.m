@@ -73,11 +73,11 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
                 open(obj.v);
             end
             
-            initialize@BifrucationMonitorHeadless(obj, u0_hat, t_grid);
+            initialize@BifurcationMonitorHeadless(obj, u0_hat, t_grid);
         end
 
         function update(obj, u_hat, t)
-            update@BifrucationMonitorHeadless(obj, u_hat, t);
+            update@BifurcationMonitorHeadless(obj, u_hat, t);
 
             u = real(ifft(u_hat));
 
@@ -94,6 +94,7 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
                 set(obj.hLine3, 'XData', obj.params.mu([valid_modes(:, 1); t]), 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
 
                 obj.hFreq.YData = ifftshift(abs(u_hat));
+                axis(obj.ax4, 'tight');
 
                 drawnow;
 

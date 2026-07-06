@@ -1,7 +1,7 @@
 function galerkin_proj_large_onset_analysis()
     %% This scripts attempts to predict the high amplitude onset time and 
     % resulting mode and compares it to solution data.
-    saved = load('dominate_modes_densest.mat');
+    saved = load('dominate_modes.mat');
 
     data_epsilon = saved.EP;
     selected_mode_thr = saved.DMODE * saved.Lx / pi;

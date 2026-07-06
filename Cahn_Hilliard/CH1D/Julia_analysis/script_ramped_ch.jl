@@ -250,10 +250,10 @@ function run_simulation(T_type::Type{T}) where {T}
     
     EP = [T(10)^(-5.5)]
     
-    dt = T(0.1)
+    dt = T(0.2)
     mass = T(0.0)
     mu0 = T(-0.2)
-    muf = T(0.3)
+    muf = T(0.21)
     muf0 = muf
     xscale = T(10.0)
     Lx = xscale * T(pi)
@@ -263,16 +263,8 @@ function run_simulation(T_type::Type{T}) where {T}
     for ep in EP
         println("Running simulation for epsilon = ", Float64(ep))
         
-        muf_temp = T(0.0)
-        if ep < T(1e-3)
-            muf_temp = T(0.55)
-        elseif ep < T(10)^(-3.5)
-            muf_temp = T(0.2)
-        else
-            muf_temp = muf0
-        end
-        muf_temp = min(muf_temp, muf0)
-        
+        muf_temp = muf0
+
         T_end = (muf_temp - mu0) / ep
         num_time_steps = ceil(Int, Float64(T_end / dt))
         
@@ -308,5 +300,5 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     # Run with Float64x2 for high numerical precision
-    run_simulation(Float64)
+    run_simulation(Float64x4)
 end
