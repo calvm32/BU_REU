@@ -71,7 +71,7 @@ print_galerkin_odes(K, C, L);
 %% Initial condition
 rng(1)
 
-u0 = 1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
+u0 = 0; %1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
 rk = r_k(k,L,epsilon,t0);
 
 u0(index_of(3)) = rk(t0);
