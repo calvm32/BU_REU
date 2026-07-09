@@ -25,7 +25,6 @@ function [sol] = evolution_solve(problem, solver, dt, options)
     % If u0 is 3D, this creates {':', ':', ':'}
     spatial_idx = repmat({':'}, 1, ndims(problem.u0));
 
-    
     u = problem.u0;
     
     u_hist(spatial_idx{:}, 1) = u;

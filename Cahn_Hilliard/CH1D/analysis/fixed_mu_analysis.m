@@ -66,7 +66,7 @@ for m = 1:length(k_i)
     params.k_j = k_j;
     params.plot_every = plot_every;
     params.save_video = save_video;
-    params.video_filename = sprintf('k=%.3f_T=%.0f.mp4', k, T);
+    params.video_filename = sprintf('k=%.3f_T=%.0f.avi', k, T);
     params.video_framerate = 60;
 
     monitor = BifurcationMonitor(params);

@@ -45,7 +45,7 @@ kx_max = max(abs(kx));
 ky_max = max(abs(ky));
 dealias_mask = (abs(KX) <= (2/3)*kx_max) & (abs(KY) <= (2/3)*ky_max);
 
-%% 1. Define the Evolution Problem
+%% Define the Evolution Problem
 mu = @(t) t*epsilon;
 
 % Linear operator is time-dependent
@@ -56,10 +56,10 @@ nonlin_op = @(u_hat, t) Laplacian_k .* dealias_mask .* fft2( real(ifft2(u_hat)).
 
 problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
 
-%% 2. Setup the Solver
+%% Setup the Solver
 solver = CrankNicolsonSolver();
 
-%% 3. Setup the Monitor
+%% Setup the Monitor
 params.mode = 'domain_wall_density';
 params.x = x;
 params.y = y;
@@ -77,7 +77,7 @@ params.video_filename = ['cahn_hilliard_2D_mu(1)=' num2str(mu(1),'%.2f') '.avi']
 
 monitor = CH2DMonitor(params);
 
-%% 4. Execute the Solve
+%% Execute the Solve
 disp('Starting integration (CH2D CN)...');
 sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
 disp(['Integration complete. Video saved to: ', params.video_filename]);

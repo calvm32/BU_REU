@@ -31,7 +31,7 @@ sigma = 0.01;
 u0_real = sigma*randn(1,Nx);
 u0_hat = fft(u0_real);
 
-%% 1. Define the Evolution Problem
+%% Define the Evolution Problem
 mu = @(t) t*epsilon;
 
 % The nonlinear operator: Takes u_hat, returns Nu_hat
@@ -40,10 +40,10 @@ nonlin_op = @(u_hat, t) dealias_mask .* Laplacian_hat .* ...
                     
 problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
 
-%% 2. Setup the Solver
+%% Setup the Solver
 solver = ETDRK4Solver(16); 
 
-%% 3. Execute the Solve with Monitor
+%% Execute the Solve with Monitor
 params.epsilon = epsilon;
 params.blowup_time = blowup_time;
 params.Lx = Lx;
@@ -55,7 +55,7 @@ params.x = x;
 params.kx = kx;
 params.mu = mu;
 params.save_video = true;
-params.video_filename = sprintf('T=%.0f_epsilon=%.4f.mp4', T, epsilon);
+params.video_filename = sprintf('T=%.0f_epsilon=%.4f.avi', T, epsilon);
 
 monitor = DensityL2FreeEnergyMonitor(params);
 

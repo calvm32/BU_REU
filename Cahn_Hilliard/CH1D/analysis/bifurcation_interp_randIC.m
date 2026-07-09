@@ -70,7 +70,7 @@ for m = 1:length(alpha)
     params.k_j = k_j;
     params.plot_every = plot_every;
     params.save_video = save_video;
-    params.video_filename = sprintf('long_alpha=%.3f_T=%.0f.mp4', alpha(m), T);
+    params.video_filename = sprintf('long_alpha=%.3f_T=%.0f.avi', alpha(m), T);
     params.video_framerate = 30;
 
     monitor = BifurcationMonitor(params);

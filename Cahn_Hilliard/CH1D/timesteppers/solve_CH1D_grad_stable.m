@@ -34,7 +34,7 @@ Laplacian_k = -(kx.^2);
 kx_max = max(abs(kx));
 dealias_mask = abs(kx) <= (2/3)*kx_max;
 
-%% 1. Define the Evolution Problem
+%% Define the Evolution Problem
 mu = @(t) t*epsilon;
 
 % Dummy linear operator, solver does the stabilized IMEX division internally
@@ -45,11 +45,11 @@ nonlin_op = @(u_hat, t) dealias_mask .* fft( real(ifft(u_hat)).^3 );
 
 problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
 
-%% 2. Setup the Solver
+%% Setup the Solver
 S = 2.0;
 solver = GradStableIMEXSolver(S, Laplacian_k, mu);
 
-%% 3. Setup the Monitor
+%% Setup the Monitor
 params.epsilon = epsilon;
 params.blowup_time = blowup_time;
 params.Lx = Lx;
@@ -65,7 +65,7 @@ params.video_filename = ['cahn_hilliard_1D_mu(1)=' num2str(mu(1),'%.2f') '.avi']
 
 monitor = DensityL2FreeEnergyMonitor(params);
 
-%% 4. Execute the Solve
+%% Execute the Solve
 disp('Starting integration (CH1D Grad Stable)...');
 sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
 disp(['Integration complete. Video saved to: ', params.video_filename]);
