@@ -96,8 +96,13 @@ parfor idx = 1:num_total_sims
         fft( real(ifft(u_hat)).^3 - mu(t)*real(ifft(u_hat)) );       
     
     problem = EvolutionProblem(L_operator, nonlin_op, u_hat0, [0, T]);
-    solver = ETDRK4Solver(16);
     
+    if ep < 1e-4
+        solver = ETDRK4Solver(32);
+    else
+        solver = ETDRK4Solver(16);
+    end
+
     monitor = BifurcationMonitorHeadless(mu, kx, Lx, Nx);
     % In case you want to save videos/plots:
     % monitor = BifurcationMonitorInMu(mu, kx, Lx, Nx, x, k_j, save_video=true, video_filename='sim_movie.avi', video_framerate=30);
