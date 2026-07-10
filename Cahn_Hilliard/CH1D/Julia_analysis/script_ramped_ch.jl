@@ -141,13 +141,13 @@ function solve_etdrk4!(
     
     Nx = length(u)
     
-    # --- Pre-allocated workspace (real) ---
+    # Pre-allocated workspace (real)
     u3_scratch = zeros(T, Nx)
     a          = zeros(T, Nx)
     b          = zeros(T, Nx)
     c          = zeros(T, Nx)
     
-    # --- Pre-allocated workspace (complex) for in-place FFT/IFFT ---
+    # Pre-allocated workspace (complex) for in-place FFT/IFFT
     fft_scratch  = zeros(Complex{T}, Nx)
     ifft_scratch = zeros(Complex{T}, Nx)
     
@@ -188,7 +188,7 @@ function solve_etdrk4!(
         mu_tmid = mu0 + tmid * ep
         mu_tend = mu0 + tend * ep
         
-        # --- ETDRK4 In-place Step Formulation ---
+        # ETDRK4 In-place Step Formulation
         
         # Stage 1
         compute_nonlinear_forcing_hat!(Nu_hat, u, mu_t, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
@@ -212,7 +212,7 @@ function solve_etdrk4!(
         @. u_hat = E * u_hat + f1 * Nu_hat + 2 * f2 * (Na_hat + Nb_hat) + f3 * Nc_hat
         ifft_to_real!(u, u_hat, ifft_scratch)
         
-        # --- Physics Tracking ---
+        # Physics Tracking
         max_index = argmax_abs2_skip1(u_hat)
         dom_mode  = abs(kx[max_index])
 
@@ -291,7 +291,7 @@ function run_simulation(T_type::Type{T}) where {T}
             E, E2, Q, f1, f2, f3, l2_thr
         )
         
-        println("--- Results for epsilon = ", Float64(ep), " ---")
+        println("--- Results for epsilon = ", Float64(ep), "")
         println("MU THRESHOLD:  ", Float64(mu_thr))
         println("DOMINANT MODE: ", Float64(dom_mode))
         println("FINAL MODE:    ", Float64(dom_mode_final))

@@ -21,7 +21,7 @@ function galerkin_proj_data_verification_explicit_eq()
     lambda2 = @(mu) mu * ktilde2(2) - ktilde2(2)^2;
     lambda3 = @(mu) mu * ktilde2(3) - ktilde2(3)^2;
     
-    % --- EXTRACT AND SHIFT THE TRUE DATA ---
+    % EXTRACT AND SHIFT THE TRUE DATA
     % sol.solution is assumed to be complex Fourier modes (modes x time)
     % Index 2 is k=1, Index 3 is k=2, Index 4 is k=3
     
@@ -36,7 +36,7 @@ function galerkin_proj_data_verification_explicit_eq()
     
     mu_grid = mu0 + epsilon * sol.time;
 
-    % --- SET UP AND SOLVE THE ODE ---
+    % SET UP AND SOLVE THE ODE
     r0 = [r1_data(1); r2_data(1); r3_data(1)]; 
     tspan = [mu0, mu_max];
     
@@ -47,7 +47,7 @@ function galerkin_proj_data_verification_explicit_eq()
     r2_est = r_sol(:, 2)';
     r3_est = r_sol(:, 3)';
     
-    % --- PLOT THE COMPARISON ---
+    % PLOT THE COMPARISON
     figure('Position', [200 200 800 500]);
     hold on;
     

@@ -1,11 +1,11 @@
 %% Predict the high amplitude onset time and resulting mode
 
-% --- PARAMETERS ---
+% PARAMETERS
 delta = 2^(-10); 
 amp_thr = 1/sqrt(20 * pi);
 
 
-% --- FUNCTIONS ---
+% FUNCTIONS
 ktilde2 = @(k) (k / 10)^2; 
 
 % Use element-wise operations (.*, ./, .^) for grid evaluation
@@ -35,7 +35,7 @@ C = @(eps, mu0) sqrt(pi ./ (4 * a(eps))) ./ eps .* ktilde2(3) .* delta^3 .* ...
 mu3_res_onset =  @(eps, mu0) ktilde2(3) + sqrt(ktilde2(3)^2 + 2 / ktilde2(3) .* ...
     (eps .* log(amp_thr) - eps .* log(C(eps, mu0))));
 
-% --- GRID SETUP ---
+% GRID SETUP
 % Create a dense grid over the specified domain
 eps_vec = logspace(-6, -2, 1200); 
 mu0_vec = linspace(-0.5, 0, 1200);
@@ -173,7 +173,7 @@ grid on;
 hold off;
 
 
-% --- HELPER FUNCTION ---
+% HELPER FUNCTION
 function Z = evaluate_real(func, X, Y)
     % Evaluates the function and masks imaginary results as NaN
     % This prevents invalid onset times from affecting the minimum calculation

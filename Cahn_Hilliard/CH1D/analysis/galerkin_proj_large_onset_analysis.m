@@ -61,7 +61,7 @@ function galerkin_proj_large_onset_analysis()
      (epsilon .* log(amp_thr) - epsilon .* log(C)));
     
     
-    % --- PLOT THE COMPARISON ---
+    % PLOT THE COMPARISON
     figure('Position', [200 200 800 500], 'Resize', false);
     theme("light");    
     hold on;

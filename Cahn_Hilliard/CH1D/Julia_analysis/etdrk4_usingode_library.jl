@@ -144,7 +144,7 @@ function run_simulation(alpha_val::Float64)
     
     println("ODE Solve Complete! Rendering MP4...")
 
-    # --- 6. POST PROCESSING & PLOTTING ---
+    # 6. POST PROCESSING & PLOTTING
     # StaticArrays track dynamic dominant modes with zero heap allocations
     dominate_mode = Vector{SVector{2, Float64}}()
     

@@ -28,7 +28,7 @@ function galerkin_proj_approx()
     nu2 = @(mu) nu(mu, 2);
     nu3 = @(mu) nu(mu, 3);
     
-    % --- EXTRACT AND SHIFT THE TRUE DATA ---
+    % EXTRACT AND SHIFT THE TRUE DATA
     % sol.solution is assumed to be complex Fourier modes (modes x time)
     % Index 2 is k=1, Index 3 is k=2, Index 4 is k=3
     
@@ -78,7 +78,7 @@ function galerkin_proj_approx()
     C = -epsilon * log(C0) - epsilon * nu1(mu0);
     mu_13 = max(roots([A, B, C]));
     
-    % --- PLOT THE COMPARISON ---
+    % PLOT THE COMPARISON
     figure('Position', [200 200 800 500]);
     theme("light");    
     hold on;

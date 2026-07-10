@@ -19,11 +19,11 @@ clc; clear; close all;
 
 
 %% Parameters
-epsilon  = 10^(-4);
+epsilon = 10^(-4);
 mu_final = 0.5;
-t0       = -0.2 / epsilon;
-T        = mu_final/epsilon;
-m        = 0.5; % final mass
+t0 = -0.2 / epsilon;
+T = mu_final/epsilon;
+m = 0.5; % final mass
 
 K = -5:5;
 Nmodes = length(K);
@@ -34,30 +34,21 @@ Lx = L*pi;
 
 %% Movie / frame parameters
 
-Nframes        = 200;                       % number of evenly-spaced mu-frames
-tspan          = linspace(t0,T,Nframes);    % uniform in t => uniform in mu since mu=eps*t
-mu_vec_target  = epsilon*tspan;             % the mu-axis we evolve over
-mu0            = epsilon*t0;
+Nframes  = 200;                     % number of evenly-spaced mu-frames
+tspan = linspace(t0,T,Nframes);     % uniform in t => uniform in mu since mu=eps*t
+mu_vec_target = epsilon*tspan;      % the mu-axis we evolve over
+mu0 = epsilon*t0;
 
-eq_window      = 10;                        % # consecutive frames the dominant mode must hold to call it "equilibrium"
+eq_window = 10;                     % # consecutive frames the dominant mode must hold to call it "equilibrium"
 
 %% Build cubic interaction tensor
 C = zeros(Nmodes,Nmodes,Nmodes,Nmodes);
-
 for kk = 1:Nmodes
-    k = K(kk);
-    
     for mm = 1:Nmodes
-        km = K(mm);
-        
         for nn = 1:Nmodes
-            kn = K(nn);
-            
             for pp = 1:Nmodes
-                kp = K(pp);
-                
-                if km+kn+kp==k
-                    C(kk,mm,nn,pp)=1;
+                if K(mm)+K(nn)+K(pp) == K(kk)
+                    C(kk,mm,nn,pp) = 1;
                 end
             end
         end
@@ -66,7 +57,6 @@ end
 
 
 %% Print the ODE system being solved (human-readable, built from K and C)
-
 print_galerkin_odes(K, C, L, m);
 
 %% Initial condition
@@ -341,7 +331,7 @@ function print_galerkin_odes(K, C, L, m)
     for kk = 1:Nmodes
         k = K(kk);
         
-        % ---- collect & group nonlinear (cubic) terms from C ----
+        % collect & group nonlinear (cubic) terms from C
         terms = containers.Map('KeyType','char','ValueType','double');
         
         for mm = 1:Nmodes
@@ -373,10 +363,10 @@ function print_galerkin_odes(K, C, L, m)
             nl_str = strjoin(nl_parts, ' + ');
         end
         
-        % ---- linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 ----
+        % linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2
         lin_str = format_linear(k);
         
-        % ---- prefactor on the bracket, -(k^2/L^2) ----
+        % prefactor on the bracket, -(k^2/L^2)
         if k == 0
             fprintf('du_{%d}/dt = -0/L^2 * [ %s ]      (mean mode: no linear growth term)\n\n', ...
                 k, nl_str);

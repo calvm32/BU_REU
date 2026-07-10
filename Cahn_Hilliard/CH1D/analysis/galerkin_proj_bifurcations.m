@@ -6,10 +6,10 @@ clc; clear; close all;
 %% Description
 % Computes the stationary (\epsilon = 0) bifurcation structure of the 
 % 1D Cahn-Hilliard equation using Galerkin projection.
-
+% 
 % Fixed L, varying \mu.
-% Solves for equilibria using Amplitude Continuation to seamlessly trace
-% subcritical (backward-bending) branches.
+% Solves for equilibria using Amplitude Continuation, utilizing a custom 
+% Newton-Raphson solver to entirely bypass the Optimization Toolbox.
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -20,6 +20,7 @@ K = -5:5;
 Nmodes = length(K);
 Kmax = max(K);
 index_of = @(k) find(K==k);
+m = 0.5;
 
 % Amplitude stepping parameters
 A_steps = 100;
@@ -41,14 +42,13 @@ for kk = 1:Nmodes
 end
 
 %% Run Continuation for two masses
-masses = [0, 0.5];
-titles = {'Unstable Regime (m = 0)', 'Transitional Regime (m = 0.5)'};
+masses = [0, m];
+titles = {'m = 0', sprintf('m = %.3f', m)};
 
 fig1 = figure('Position', [100, 100, 1200, 500], 'Name', 'Bifurcation Diagram: L2 Norm');
 fig2 = figure('Position', [100, 650, 1200, 500], 'Name', 'Bifurcation Diagram: Amplitudes');
 
 colors = lines(Kmax);
-opts = optimoptions('fsolve', 'Display', 'off', 'FunctionTolerance', 1e-10);
 
 for m_idx = 1:length(masses)
     m = masses(m_idx);
@@ -84,8 +84,13 @@ for m_idx = 1:length(masses)
         for a_idx = 1:A_steps
             A = A_vec(a_idx);
             
-            % Solve algebraic system for mu and remaining U_j
-            [vars, fval, exitflag] = fsolve(@(v) stationary_rhs(v, A, k_target, m, L, K, C), vars0, opts);
+            % Use our custom base-MATLAB Newton solver instead of fsolve
+            target_fun = @(v) stationary_rhs(v, A, k_target, m, L, K, C);
+            [vars, success] = newton_solve(target_fun, vars0);
+            
+            if ~success
+                fprintf('Warning: Newton solver failed to converge at A = %.3f for mode %d\n', A, k_target);
+            end
             
             % Extract results
             mu_branch(a_idx) = vars(k_target);
@@ -104,7 +109,7 @@ for m_idx = 1:length(masses)
             % L2 norm is exactly the norm of the Fourier coefficients
             L2_branch(a_idx) = sqrt(sum(abs(U).^2));
             
-            % Update guess for next amplitude step
+            % Update guess for next amplitude step to ensure smooth continuation
             vars0 = vars;
         end
         
@@ -128,14 +133,11 @@ for m_idx = 1:length(masses)
     figure(fig2); xlim([0, 1.5]); legend('Location', 'northwest');
 end
 
-%% Helper Function
+%% Helper Function: Evaluates the stationary Galerkin RHS
 function F = stationary_rhs(vars, A, k_target, m, L, K, C)
-    % Evaluates the stationary Galerkin RHS
-
     Kmax = max(K);
     Nmodes = length(K);
     
-    % Reconstruct the U vector and extract mu
     U = zeros(Nmodes, 1);
     idx_zero = find(K==0);
     U(idx_zero) = m;
@@ -154,12 +156,9 @@ function F = stationary_rhs(vars, A, k_target, m, L, K, C)
         end
     end
     
-    % Build the residual vector F
     F = zeros(Kmax, 1);
     for j = 1:Kmax
         idx_j = find(K==j);
-        
-        % Compute the cubic interaction term for mode j
         nonlinear = 0;
         for mm = 1:Nmodes
             for nn = 1:Nmodes
@@ -170,9 +169,42 @@ function F = stationary_rhs(vars, A, k_target, m, L, K, C)
                 end
             end
         end
-        
-        % Stationary condition: dU_j/dt = 0
-        % (Factoring out the -j^2/L^2 prefactor simplifies the root finding)
         F(j) = (mu - j^2/L^2) * U(idx_j) - nonlinear;
+    end
+end
+
+%% Custom Newton-Raphson Solver (Replaces fsolve)
+function [x, success] = newton_solve(fun, x0)
+    % A simple implementation of Newton's method with a numerical Jacobian
+    max_iter = 50;
+    tol = 1e-10;
+    dx = 1e-6; % Step size for numerical derivative
+    
+    x = x0;
+    n = length(x);
+    success = false;
+    
+    for iter = 1:max_iter
+        F = fun(x);
+        
+        % Check for convergence
+        if norm(F) < tol
+            success = true;
+            break;
+        end
+        
+        % Approximate Jacobian matrix numerically
+        J = zeros(n, n);
+        for j = 1:n
+            x_step = x;
+            x_step(j) = x_step(j) + dx;
+            F_step = fun(x_step);
+            J(:, j) = (F_step - F) / dx;
+        end
+        
+        % Solve for the Newton step (J * step = F) and update
+        % Using the pseudo-inverse/backslash operator
+        step = J \ F;
+        x = x - step;
     end
 end
