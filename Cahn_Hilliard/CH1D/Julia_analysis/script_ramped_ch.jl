@@ -250,7 +250,7 @@ function run_simulation(T_type::Type{T}) where {T}
     
     EP = [T(10)^(-5.5)]
     
-    dt = T(0.2)
+    dt = T(20.0)
     mass = T(0.0)
     mu0 = T(-0.2)
     muf = T(0.21)
