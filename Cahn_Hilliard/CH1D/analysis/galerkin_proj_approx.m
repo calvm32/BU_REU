@@ -1,6 +1,14 @@
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description
+% This script attempts to numerically solve the Galerkin projection 
+% for the first three modes. 
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
 function galerkin_proj_approx()
-    %% This script attempts to numerically solve the Galerkin projection 
-    % for the first three modes. 
     saved = load('dom_mode_ep=0.00100_mu0=-0.30.mat');
     sol = saved.sol;
     solution = squeeze(sol.solution);

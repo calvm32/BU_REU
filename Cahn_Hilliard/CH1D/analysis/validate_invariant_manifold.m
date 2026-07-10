@@ -1,5 +1,19 @@
 clear; clc;
 
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description
+% This validates that the invariant manifold given by \hat{u}_2 or \hat{u}_3 nonzero, 
+% with \hat{u}_1=0 and \hat{u}_3=0 or \hat{u}_2=0, respectively,
+% is indeed a solution of the PDE
+
+% validation performed by both solving the ODE and plotting differences,
+% as well as using symbolic evaluation
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
 k = 3;
 L = 10;
 epsilon = 0.05;

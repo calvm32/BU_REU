@@ -1,8 +1,13 @@
 clc; clear; close all;
+
 % ------------------------------------------------------------------------------------------
-%% Description and configuration
+% ------------------------------------------------------------------------------------------
+
+%% Description
 % Galerkin projection of 1D Cahn-Hilliard compared against Full PDE
 % Initializes the ODE using the exact PDE state at mu = target_mu
+
+% ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
 %% Load Full PDE Data

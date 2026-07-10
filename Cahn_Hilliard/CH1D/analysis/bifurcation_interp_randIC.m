@@ -1,11 +1,16 @@
 clc; clear; close all;
 
-%% 
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description
 % This experiment runs through different constant mu 
 % between two bifurcation nodes. There was found to be 
 % little qualitative difference, with initial conditions 
 % more of an effect on the end dominant mode.
 
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
 
 %% Parameters
 t0 = 0.0;

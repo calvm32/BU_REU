@@ -1,6 +1,14 @@
 clear all; close all;
 
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
 
+%% Description and configuration
+% Blueprint and solver of CH
+% mu ramped linearly
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
 
 % range of epsilons
 EP = 1.15*10.^[-5]; %10.^[-4.5:1:-4];
@@ -137,7 +145,6 @@ end
 
 % Save collective run data
 % save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
-
 
 
 function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)

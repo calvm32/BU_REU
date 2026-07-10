@@ -43,7 +43,7 @@ kx_max = max(abs(kx));
 ky_max = max(abs(ky));
 dealias_mask = (abs(KX) <= (2/3)*kx_max) & (abs(KY) <= (2/3)*ky_max);
 
-%% 1. Define the Evolution Problem
+%% Define the Evolution Problem
 % Linear operator: L = -Laplacian^2 - mu*Laplacian
 % Since mu is constant, L is constant
 L_operator = -Laplacian_k.^2 - mu(0)*Laplacian_k;
@@ -53,10 +53,10 @@ nonlin_op = @(u_hat, t) Laplacian_k .* dealias_mask .* fft2( real(ifft2(u_hat)).
 
 problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
 
-%% 2. Setup the Solver
+%% Setup the Solver
 solver = CrankNicolsonSolver();
 
-%% 3. Setup the Monitor
+%% Setup the Monitor
 params.mode = image_mode;
 params.x = x;
 params.y = y;
@@ -71,7 +71,7 @@ params.video_filename = ['cahn_hilliard_2D_muIC=' num2str(mu(0),'%.2f') '.avi'];
 
 monitor = CH2DMonitor(params);
 
-%% 4. Execute the Solve
+%% Execute the Solve
 disp('Starting integration (CH2D Phase Separation)...');
 sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
 disp(['Integration complete. Video saved to: ', params.video_filename]);
