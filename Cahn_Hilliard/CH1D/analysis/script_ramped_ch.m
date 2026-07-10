@@ -11,7 +11,7 @@ clear all; close all;
 % ------------------------------------------------------------------------------------------
 
 % range of epsilons
-EP = 10.^[-4.5]; %10.^[-4.5:1:-4];
+EP = 1.15*10.^[-5]; %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -21,11 +21,10 @@ MUTHR = zeros(length(EP),1);
 save_each_run = false;
 
 %% Parameters
-dt = 0.02;
+dt = 0.02; 
 mass = 0;
 mu0 = -0.2;
 muf = 2.0;
-muf0 = muf;
 xscale = 10;
 Lx = xscale*pi;
 Nx = 2^10;
@@ -87,9 +86,9 @@ for ii = 1:length(EP)
     disp(['Running simulation for epsilon = ', num2str(ep)]);
     if ep < 1e-3
             muf_temp = 1.0;
-    else muf_temp = muf0;
+    else muf_temp = muf;
     end
-    muf_temp = min(muf_temp, muf0);
+    muf_temp = min(muf_temp, muf);
 
     T = (muf_temp - mu0)/ep;
     %muf = mu0+ep*T;%T = (muf - mu0)/ep
@@ -106,21 +105,15 @@ for ii = 1:length(EP)
     % Solver
     solver = ETDRK4Solver(16);
 
-    % Monitor params
-    params = struct();
-    params.mu = mu;
-    params.x = x;
-    params.kx = kx;
-    params.Lx = Lx;
-    params.k_j = k_j;
-    params.plot_every = plot_every;
-    params.save_video = save_video;
-    params.video_filename = sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0);
-    params.video_framerate = 30;
-
-    % Use BifurcationMonitorHeadless if you don't want plotting/video
-    % Use BifurcationMonitorInMu if you do
-    monitor = BifurcationMonitorInMu(params);
+    % Use BifurcationMonitorHeadless if you don't want plotting/video:
+    % monitor = BifurcationMonitorHeadless(mu, kx, Lx, Nx);
+    % Use BifurcationMonitorInMu if you do:
+    % monitor = BifurcationMonitorInMu(mu, kx, Lx, Nx, x, k_j, plot_every=plot_every, save_video=save_video, video_filename=sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0), video_framerate=30);
+    monitor = BifurcationMonitorInMuFiveModeHistory(mu, kx, Lx, Nx, x, k_j, ...
+        plot_every=plot_every, ...
+        save_video=save_video, ...
+        video_filename=sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0), ...
+        video_framerate=30);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
@@ -151,7 +144,7 @@ end
 % plot(EP,DMODE,'-o','LineWidth',2)
 
 % Save collective run data
-%save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
+% save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
 
 
 function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)

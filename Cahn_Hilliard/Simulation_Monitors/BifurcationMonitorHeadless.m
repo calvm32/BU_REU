@@ -3,40 +3,51 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
     % Records L2 norm and dominant Fourier mode history
 
     properties (SetAccess = private)
-        params struct
+        mu
+        kx (1, :) double
+        Lx (1, 1) double
+        Nx (1, 1) double
         t_grid (1, :) double
+        mu_grid (1, :) double
+
 
         % Tracking arrays
         l2_history double
         dominate_mode double % 2D array: [t, dom_mode]
         dom_mode_ind = 1
+        amp_history double
 
         step_idx = 0
     end
 
     methods
-        function obj = BifurcationMonitorHeadless(params)
+        function obj = BifurcationMonitorHeadless(mu, kx, Lx, Nx)
             % Code assumes mu is a function of time
-            if isnumeric(params.mu)
-                params.mu = @(t) params.mu * ones(size(t));
+            if isnumeric(mu)
+                obj.mu = @(t) mu * ones(size(t));
+            else
+                obj.mu = mu;
             end
-            obj.params = params;
+            obj.kx = kx;
+            obj.Lx = Lx;
+            obj.Nx = Nx;
         end
 
         function initialize(obj, u0_hat, t_grid)
             num_steps = length(t_grid);
             obj.t_grid = t_grid;
+            obj.mu_grid = obj.mu(t_grid);
 
             % Initial dominant mode tracking
-            obj.dominate_mode = NaN(num_steps, 2);
+            obj.dominate_mode = NaN(20, 2);
             u0 = real(ifft(u0_hat));
             [~, max_index] = max(abs(u0_hat - mean(u0)));
-            obj.dominate_mode(1, :) = [t_grid(1), obj.params.kx(max_index)];
+            obj.dominate_mode(1, :) = [t_grid(1), obj.kx(max_index)];
             obj.dom_mode_ind = 1;
 
             obj.l2_history = zeros(1, num_steps);
+            obj.amp_history = zeros(5, num_steps); % TODO: Add 5 to parameters
 
-            
             obj.update(u0_hat, t_grid(1));
         end
 
@@ -46,11 +57,14 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             u = real(ifft(u_hat));
 
             % L2 computation
-            obj.l2_history(obj.step_idx) = sqrt(obj.params.Lx) * norm(u_hat) / length(u_hat);
+            obj.l2_history(obj.step_idx) = sqrt(obj.Lx) * norm(u_hat) / length(u_hat);
+
+            % Amplitude history saving
+            obj.amp_history(:, obj.step_idx) = abs(u_hat(2:6) / obj.Nx); % TODO: Update so that 5 is a parameter
 
             % Dominate mode computation (excludes the mean mode)
             [~, max_index] = max(abs(u_hat - mean(u)));
-            dom_mode = obj.params.kx(max_index);
+            dom_mode = obj.kx(max_index);
 
             if obj.dom_mode_ind == 0 || obj.dominate_mode(obj.dom_mode_ind, 2) ~= dom_mode
                 obj.dom_mode_ind = obj.dom_mode_ind + 1;

@@ -1,6 +1,7 @@
-classdef BifurcationMonitor < BifurcationMonitorHeadless
-    %BIFURCATIONMONITOR A monitor for bifurcation and mode surpass analysis.
-    % Displays the solution, L2 norm, dominant Fourier mode history, and the Fourier spectrum.
+classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
+    %BIFURCATIONMONITORINMU A monitor for bifurcation and mode surpass analysis.
+    % Displays the solution, L2 norm, dominant Fourier mode history, and 
+    % amplitude history of the first five modes.
 
     properties (SetAccess = private)
         x (1, :) double
@@ -14,8 +15,8 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
         fig
         hLine1
         l2_line
-        hLine3
-        hFreq
+        amp_plots
+        hLine3  
         ax1
         ax2
         ax3
@@ -27,7 +28,7 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
     end
 
     methods
-        function obj = BifurcationMonitor(mu, kx, Lx, Nx, x, k_j, options)
+        function obj = BifurcationMonitorInMuFiveModeHistory(mu, kx, Lx, Nx, x, k_j, options)
             arguments
                 mu
                 kx (1, :) double
@@ -50,7 +51,7 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
             obj.video_framerate = options.video_framerate;
         end
 
-        function initialize(obj, u0_hat, t_grid)
+        function initialize(obj, u0_hat, t_grid)        
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
@@ -70,31 +71,36 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
             % Subplot 2: L2 norm
             obj.ax2 = subplot(2,3,4);
             obj.l2_line = semilogy(obj.ax2, 0, NaN, 'LineWidth', 2);
-            xlabel(obj.ax2, 't'); 
-            ylabel(obj.ax2, '||u||_{L^2}');
+            xlabel(obj.ax2, '\mu'); 
+            ylabel(obj.ax2, '||u(\mu, \cdot)||_{L^2}');
             title(obj.ax2, 'L2 Norm of u');
             grid(obj.ax2, 'on');
 
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
-            % initialize@BifurcationMonitorHeadless is called later, but dominate_mode property is populated there.
-            % Let's setup the stairs graph with NaNs, then update will position it properly.
-            obj.hLine3 = stairs(obj.ax3, t_grid(1), obj.kx(1), 'LineWidth', 2);
+            obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
             labels = cellstr("k_" + (0:numel(obj.k_j)-1));
             yline(obj.ax3, obj.k_j, '--r', labels, 'LineWidth', 2);    
-            xlabel(obj.ax3, 't'); 
+            xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
-            xlim(obj.ax3, [t_grid(1), t_grid(end)]);
+            xlim(obj.ax3, obj.mu(t_grid([1, end])));
             ylim(obj.ax3, [0, obj.k_j(end)]); 
             grid(obj.ax3, 'on');
 
-            % Subplot 4: Fourier Spectrum (semilogy: handles zeros cleanly)
+            % Subplot 4: Fourier amplitude histories
             obj.ax4 = subplot(2,3,6);
-            obj.hFreq = semilogy(obj.ax4, ifftshift(obj.kx), ifftshift(abs(u0_hat)), 'LineWidth', 2);
-            xlabel(obj.ax4, 'k'); 
-            ylabel(obj.ax4, '$|\hat{u}|$', 'Interpreter', 'latex');
-            xlim(obj.ax4, [-obj.kx(32), obj.kx(32)]);
-            ylim(obj.ax4, [1e-25, 1e5]);
+            hold(obj.ax4, 'on'); 
+            obj.amp_plots = gobjects(1, 5); 
+            
+            for k = 1:5
+                obj.amp_plots(k) = semilogy(obj.ax4, NaN, NaN, 'LineWidth', 2);
+            end
+            
+            labels = arrayfun(@(k) sprintf('u_%d', k), 1:5, 'UniformOutput', false);
+            legend(obj.ax4, obj.amp_plots, labels, 'Location', 'southwest', 'Interpreter', 'tex');
+            xlabel(obj.ax4, '\mu'); 
+            ylabel(obj.ax4, '|u_k|');
+            title(obj.ax4, 'Amplitude over \mu');
             grid(obj.ax4, 'on');
             set(obj.ax4, 'YScale', 'log');
 
@@ -105,7 +111,7 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
                 obj.v.Quality = 100;
                 open(obj.v);
             end
-
+            
             initialize@BifurcationMonitorHeadless(obj, u0_hat, t_grid);
         end
 
@@ -117,16 +123,21 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
             % Update plots
             if mod(obj.step_idx - 1, obj.plot_every) == 0
                 obj.hLine1.YData = u;
-                obj.hTitle1.String = sprintf('t = %.4f', t);
+                obj.hTitle1.String = sprintf('mu = %.4f, t = %.1f', obj.mu(t), t);
 
-                obj.l2_line.XData = obj.t_grid(1:obj.step_idx);
+                obj.l2_line.XData = obj.mu_grid(1:obj.step_idx);
                 obj.l2_line.YData = obj.l2_history(1:obj.step_idx);
                 axis(obj.ax2, 'tight');
 
                 valid_modes = obj.dominate_mode(1:obj.dom_mode_ind, :);
-                set(obj.hLine3, 'XData', [valid_modes(:, 1); t], 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
+                set(obj.hLine3, 'XData', obj.mu([valid_modes(:, 1); t]), 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
 
-                obj.hFreq.YData = ifftshift(abs(u_hat) / obj.Nx);
+                for k = 1:5
+                    set(obj.amp_plots(k), ...
+                        'XData', obj.mu_grid(1:obj.step_idx), ...
+                        'YData', obj.amp_history(k, 1:obj.step_idx));
+                end
+                axis(obj.ax4, 'tight');
 
                 drawnow;
 

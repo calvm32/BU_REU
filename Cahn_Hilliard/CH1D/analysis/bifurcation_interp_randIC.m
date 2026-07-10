@@ -67,18 +67,11 @@ for m = 1:length(alpha)
     % Solver
     solver = ETDRK4Solver(16);
 
-    % Monitor params
-    params.mu = mu_val;
-    params.x = x;
-    params.kx = kx;
-    params.Lx = Lx;
-    params.k_j = k_j;
-    params.plot_every = plot_every;
-    params.save_video = save_video;
-    params.video_filename = sprintf('long_alpha=%.3f_T=%.0f.avi', alpha(m), T);
-    params.video_framerate = 30;
-
-    monitor = BifurcationMonitor(params);
+    monitor = BifurcationMonitor(mu_val, kx, Lx, Nx, x, k_j, ...
+        plot_every=plot_every, ...
+        save_video=save_video, ...
+        video_filename=sprintf('long_alpha=%.3f_T=%.0f.mp4', alpha(m), T), ...
+        video_framerate=30);
 
     % Execute
     sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
