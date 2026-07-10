@@ -1,6 +1,14 @@
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description
+% This scripts attempts to predict the high amplitude onset time and 
+% resulting mode and compares it to solution data.
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
 function galerkin_proj_large_onset_analysis()
-    %% This scripts attempts to predict the high amplitude onset time and 
-    % resulting mode and compares it to solution data.
     saved = load('dominate_modes.mat');
 
     data_epsilon = saved.EP;

@@ -19,13 +19,13 @@ clc; clear; close all;
 
 
 %% Parameters
-
 epsilon  = 10^(-4);
 mu_final = 0.5;
 t0       = -0.2 / epsilon;
 T        = mu_final/epsilon;
+m        = 0.5; % final mass
 
-K = -3:3;
+K = -5:5;
 Nmodes = length(K);
 index_of = @(k) find(K==k);
 
@@ -45,17 +45,17 @@ C = zeros(Nmodes,Nmodes,Nmodes,Nmodes);
 
 for kk = 1:Nmodes
     k = K(kk);
-
+    
     for mm = 1:Nmodes
-        m = K(mm);
-
+        km = K(mm);
+        
         for nn = 1:Nmodes
-            n = K(nn);
-
+            kn = K(nn);
+            
             for pp = 1:Nmodes
-                p = K(pp);
-
-                if m+n+p==k
+                kp = K(pp);
+                
+                if km+kn+kp==k
                     C(kk,mm,nn,pp)=1;
                 end
             end
@@ -66,24 +66,22 @@ end
 
 %% Print the ODE system being solved (human-readable, built from K and C)
 
-print_galerkin_odes(K, C, L);
+print_galerkin_odes(K, C, L, m);
 
+%% Initial condition
 %% Initial condition
 rng(1)
 
-u0 = 0; %1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
-rk = r_k(k,L,epsilon,t0);
-
-u0(index_of(3)) = rk(t0);
+u0 = 1e-2*(randn(Nmodes,1)+1i*randn(Nmodes,1));
 
 % Make solution real
-u0(index_of(0)) = real(u0(index_of(0)));
-for k=1:3
+for k=1:max(K)
     u0(index_of(-k)) = conj(u0(index_of(k)));
 end
 
-%% Solve in mu space
+u0(index_of(0)) = m; % mean mass
 
+%% Solve in mu space
 opts = odeset('RelTol',1e-8,'AbsTol',1e-10);
 [t,U] = ode45(@(t,u) rhs(t,u,epsilon,K,C,L), tspan, u0, opts);
 
@@ -98,11 +96,11 @@ Ux = zeros(length(t),Nx);
 
 for j=1:length(t)
     temp = zeros(1,Nx);
-
+    
     for ii=1:Nmodes
         temp = temp + U(j,ii)*exp(1i*K(ii)*x/L);
     end
-
+    
     Ux(j,:) = real(temp);
 end
 
@@ -135,7 +133,7 @@ end
 
 k_ref = 0:6;     % integer Galerkin modes |k| = 0..3 matter most, but keep a few extra for context
 
-%% Build the movie
+%% Build the movie 
 vidObj = VideoWriter('galerkin_ch_mu_evolution.avi','Motion JPEG AVI');
 vidObj.FrameRate = 20;
 vidObj.Quality   = 90;
@@ -149,11 +147,11 @@ ylim_L2   = [0 max(L2_hist)*1.1];
 ylim_kdom = [0 max(kdom_hist)*1.2 + 0.5];
 
 for j = 1:length(t)
-
+    
     clf(fig);
-
+    
     mu_now = mu_vec(j);
-
+    
     % Subplot 1: real-space solution at current mu
     subplot(2,2,1)
     plot(x, Ux(j,:), 'LineWidth', 1.5, 'Color', [0.18 0.45 0.69])
@@ -161,7 +159,7 @@ for j = 1:length(t)
     title(sprintf('Real-space solution, \\mu = %.3f', mu_now))
     ylim(ylim_real)
     grid on
-
+    
     % Subplot 2: Fourier spectrum at current mu (Galerkin coefficients)
     subplot(2,2,2)
     stem(K, abs(U(j,:)), 'LineWidth', 1.2)
@@ -172,7 +170,7 @@ for j = 1:length(t)
     ylim_spec = [0 max(abs(U(:)))*1.1 + 1e-12];
     ylim(ylim_spec)
     grid on
-
+    
     % Subplot 3: dominant wavenumber vs mu (history up to current frame)
     subplot(2,2,3)
     stairs(mu_vec(1:j), kdom_hist(1:j), 'LineWidth', 2, 'Color', [0.49 0.18 0.56])
@@ -190,7 +188,7 @@ for j = 1:length(t)
     ylim(ylim_kdom)
     title('Dominant wavenumber vs \mu')
     grid on
-
+    
     % Subplot 4: L2 norm vs mu (history up to current frame)
     subplot(2,2,4)
     plot(mu_vec(1:j), L2_hist(1:j), 'LineWidth', 1.5, 'Color', [0.13 0.55 0.55])
@@ -209,10 +207,10 @@ for j = 1:length(t)
     ylim(ylim_L2)
     title('L_2 norm vs \mu')
     grid on
-
-    sgtitle(sprintf('Galerkin Cahn-Hilliard \\quad \\epsilon=%.4f \\quad \\mu(t)=\\epsilon t \\quad \\mu = %.3f / %.3f', ...
-                     epsilon, mu_now, mu_vec(end)))
-
+    
+    sgtitle(sprintf('Galerkin Cahn-Hilliard    \\epsilon=%.4f    \\mu(t)=\\epsilon t    \\mu = %.3f / %.3f', ...
+                     epsilon, mu_now, mu_vec(end))) 
+    
     drawnow;
     frame = getframe(fig);
     writeVideo(vidObj, frame);
@@ -271,19 +269,19 @@ grid on
 sgtitle(sprintf('\\epsilon=%.4f  mu\\_final=%.2f  L=%d', epsilon, mu_final, L))
 
 saveas(fig2, 'galerkin_ch_mu_final.png')
-close(fig2);
+% close(fig2);
 
 
 %% Functions
 function dudt = rhs(t,u,epsilon,K,C,L)
-
+    
     Nmodes = length(K);
     mu = epsilon*t;
     dudt = zeros(Nmodes,1);
-
+    
     for kk = 1:Nmodes
         nonlinear = 0;
-
+        
         for mm = 1:Nmodes
             for nn = 1:Nmodes
                 for pp = 1:Nmodes
@@ -291,17 +289,20 @@ function dudt = rhs(t,u,epsilon,K,C,L)
                 end
             end
         end
-
+        
         lambda = ...
             -(K(kk)^4)/(L^4) ...
             + mu*(K(kk)^2)/(L^2);
-
+        
         dudt(kk) = ...
             lambda*u(kk) ...
             - (K(kk)^2)/(L^2)*nonlinear;
-
+        
+        if K(kk)==0
+            dudt(kk)=0;
+            continue
+        end
     end
-
 end
 
 
@@ -311,11 +312,11 @@ function mu_select = find_selection_time(kdom_hist, mu_vec, window)
 
     N = length(kdom_hist);
     mu_select = NaN;
-
+    
     if N < window
         return
     end
-
+    
     for j = window:N
         win = kdom_hist(j-window+1:j);
         if all(win == win(1))
@@ -323,26 +324,26 @@ function mu_select = find_selection_time(kdom_hist, mu_vec, window)
             return
         end
     end
-
+    
 end
 
 
-function print_galerkin_odes(K, C, L)
-
+function print_galerkin_odes(K, C, L, m)
+    
     Nmodes = length(K);
-
+    
     fprintf('\n========================================================\n');
     fprintf(' Galerkin-projected Cahn-Hilliard system (modes |k| <= %d)\n', max(abs(K)));
     fprintf(' PDE:  u_t = -d_xx( d_xx u + mu(t) u - u^3 )\n');
     fprintf(' Domain half-length L = %g  (Lx = %g*pi)\n', L, L);
     fprintf('========================================================\n\n');
-
+    
     for kk = 1:Nmodes
         k = K(kk);
-
+        
         % ---- collect & group nonlinear (cubic) terms from C ----
         terms = containers.Map('KeyType','char','ValueType','double');
-
+        
         for mm = 1:Nmodes
             for nn = 1:Nmodes
                 for pp = 1:Nmodes
@@ -358,7 +359,7 @@ function print_galerkin_odes(K, C, L)
                 end
             end
         end
-
+        
         keysList = keys(terms);
         if isempty(keysList)
             nl_str = '0';
@@ -371,119 +372,131 @@ function print_galerkin_odes(K, C, L)
             end
             nl_str = strjoin(nl_parts, ' + ');
         end
-
+        
         % ---- linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 ----
-        lin_str = format_linear(k, L);
-
+        lin_str = format_linear(k);
+        
         % ---- prefactor on the bracket, -(k^2/L^2) ----
-        [pn, pd] = simplify_frac(-(k^2), L^2);
-        prefactor_str = format_frac(pn, pd);
-
         if k == 0
-            fprintf('du_{%d}/dt = -%s * [ %s ]      (mean mode: no linear growth term)\n\n', ...
-                k, format_frac(k^2, L^2), nl_str);
+            fprintf('du_{%d}/dt = -0/L^2 * [ %s ]      (mean mode: no linear growth term)\n\n', ...
+                k, nl_str);
         else
+            prefactor_str = sprintf('-%d/L^2', k^2);
             fprintf('du_{%2d}/dt = %s * u_{%d}   +   %s * [ %s ]\n\n', ...
                 k, lin_str, k, prefactor_str, nl_str);
         end
     end
-
+    
     fprintf('========================================================\n');
     fprintf('Note: u_{-k} = conj(u_k) is enforced by the reality condition;\n');
     fprintf('      mu is shorthand for mu(t) = epsilon*t.\n');
     fprintf('========================================================\n\n');
-
+    
 end
 
 
 %% formatting
 
 function s = format_monomial(coeff, idxs)
-% Build a string like "3*u_{-1}*u_{0}^2" from a sorted triplet of mode
-% indices and its multiplicity coefficient.
-
-    uvals = unique(idxs);
-    parts = cell(1,length(uvals));
-    for ii = 1:length(uvals)
-        v   = uvals(ii);
-        cnt = sum(idxs == v);
-        if cnt == 1
-            parts{ii} = sprintf('u_{%d}', v);
-        else
-            parts{ii} = sprintf('u_{%d}^%d', v, cnt);
-        end
+    
+    % count how many zero modes appear
+    nzero = sum(idxs==0);
+    
+    % remove them
+    idxs = idxs(idxs~=0);
+    
+    % base numeric coefficient string (suppress "1" if m will be present)
+    if coeff == 1 && nzero > 0
+        coeffstr = '';
+    else
+        coeffstr = sprintf('%d', coeff);
     end
-    monomial = strjoin(parts, '*');
-
-    if coeff == 1
+    
+    % coefficient gets multiplied by m^nzero
+    if nzero == 1
+        if isempty(coeffstr), coeffstr = 'm'; else, coeffstr = sprintf('%s*m', coeffstr); end
+    elseif nzero == 2
+        if isempty(coeffstr), coeffstr = 'm^2'; else, coeffstr = sprintf('%s*m^2', coeffstr); end
+    elseif nzero == 3
+        if isempty(coeffstr), coeffstr = 'm^3'; else, coeffstr = sprintf('%s*m^3', coeffstr); end
+    end
+    
+    if isempty(idxs)
+        monomial = '';
+    else
+        uvals = unique(idxs);
+        parts = {};
+        
+        for ii=1:length(uvals)
+            v = uvals(ii);
+            cnt = sum(idxs==v);
+            
+            if cnt==1
+                parts{end+1} = sprintf('u_{%d}',v);
+            else
+                parts{end+1} = sprintf('u_{%d}^%d',v,cnt);
+            end
+        end
+        
+        monomial = strjoin(parts,'*');
+    end
+    
+    if isempty(monomial)
+        if isempty(coeffstr)
+            s = '1';
+        else
+            s = coeffstr;
+        end
+    elseif isempty(coeffstr)
         s = monomial;
     else
-        s = sprintf('%d*%s', coeff, monomial);
+        s = sprintf('%s*%s',coeffstr,monomial);
     end
 end
 
-function s = format_linear(k, L)
-% Format lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 as an exact reduced
-% fraction expression, e.g. "( -81/4096 + (9/64)*mu )".
+function s = format_linear(k)
+    % Format lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 as an exact symbolic expression in L.
 
-    [n1, d1] = simplify_frac(-(k^4), L^4);
-    [n2, d2] = simplify_frac(k^2, L^2);
-
-    term1 = format_frac(n1, d1);
-
-    if n2 == 0
-        s = sprintf('( %s )', term1);
+    if k == 0
+        s = '( 0 )';
     else
-        term2 = format_frac(n2, d2);
-        s = sprintf('( %s + %s*mu )', term1, term2);
+        s = sprintf('( -%d/L^4 + %d/L^2*mu )', k^4, k^2);
     end
 end
 
-function s = format_frac(n, d)
-% Format an integer fraction n/d as a string, simplifying common
-% denominator-of-1 and sign placement.
-
-    [n, d] = simplify_frac(n, d);
-    if n == 0
-        s = '0';
-    elseif d == 1
-        s = sprintf('%d', n);
-    else
-        s = sprintf('%d/%d', n, d);
-    end
-end
-
-function [n, d] = simplify_frac(n, d)
-% Reduce integer fraction n/d by their gcd, keep denominator positive.
-
-    if n == 0
-        d = 1;
-        return
-    end
-    g = gcd(abs(n), abs(d));
-    if g > 0
-        n = n / g;
-        d = d / g;
-    end
-    if d < 0
-        n = -n;
-        d = -d;
-    end
-end
 
 function rfun = r_k(k, L, epsilon, t0)
     % closed-form solution
-
+    
     const_term = @(t) (3*sqrt(pi)*k)/(sqrt(epsilon)*L) * exp(-k^6/(epsilon*L^6)) * ...
             exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 );
-
+        
     img_term = @(t) ( erfi((sqrt(epsilon)*k/L)*t - k^3/(sqrt(epsilon)*L^3)) ...
                     - erfi((sqrt(epsilon)*k/L)*t0 - k^3/(sqrt(epsilon)*L^3)) );
-
+                
     IC_term = @(t) exp( (2*k^4/(L^4))*t - (epsilon*k^2/(L^2)).*t.^2 - (2*k^4/(L^4))*t0 + (epsilon*k^2/(L^2)).*t0.^2);
-
+    
     % IC
     r_k_0 = 10; %(const_term(t0).*img_term(t0)/(1-IC_term(t0)))^(-1/2); % must be nonzero
-
+    
     rfun = @(t) (const_term(t).*img_term(t) + r_k_0^(-2)*IC_term(t)).^(-1/2);
 end
+
+function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)
+    % Computes the j'th frequencies critical mu and associated eigenvalue
+    KS = 2 * pi * j./ L;
+    MUS = -mu0 + 2*(3 * mass^2 + KS.^2);    
+end
+
+%% Print Critical Bifurcations
+fprintf('========================================================\n');
+fprintf(' Theoretical Critical Bifurcations\n');
+fprintf('========================================================\n');
+for kk = 1:Nmodes
+    k_val = K(kk);
+    if k_val >= 0 % Only print for positive wave numbers
+        [mu_crit, ks_val] = critical_bifurcation(k_val, L, m);
+        fprintf('Mode |k| = %2d : Critical mu = %.4f\n', k_val, mu_crit);
+    end
+end
+fprintf('\n');

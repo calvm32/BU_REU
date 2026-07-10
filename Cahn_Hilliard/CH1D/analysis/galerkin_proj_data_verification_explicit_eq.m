@@ -1,6 +1,14 @@
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
+%% Description
+% This script attempts to numerically solve the Galerkin projection 
+% for the first three modes. It does not align well with the data.
+
+% ------------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------------
+
 function galerkin_proj_data_verification_explicit_eq()
-    %% This script attempts to numerically solve the Galerkin projection 
-    % for the first three modes. It does not align well with the data.
     saved = load('dom_mode_ep=0.00032_mu0=-0.20.mat');
     sol = saved.sol;
     solution = squeeze(sol.solution);
