@@ -1,210 +1,189 @@
-clc; clear; close all;
+clear; close all; clc;
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
 %% Description
-% Computes the stationary (\epsilon = 0) bifurcation structure of the 
-% 1D Cahn-Hilliard equation using Galerkin projection.
-% 
-% Fixed L, varying \mu.
-% Solves for equilibria using Amplitude Continuation, utilizing a custom 
-% Newton-Raphson solver to entirely bypass the Optimization Toolbox.
+% Computes steady-state bifurcation diagrams for 1D CH w/
+% fixed L, varying mu, 2 different values of mass m
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
-%% Parameters
 L = 10;
-K = -5:5;
-Nmodes = length(K);
-Kmax = max(K);
-index_of = @(k) find(K==k);
-m = 0.5;
+modes = 1:3; % First 3 spatial modes
+m1 = 0;
+m2 = 0.5;
+N = 2^7;
 
-% Amplitude stepping parameters
-A_steps = 100;
-A_max = 1.2;
-A_vec = linspace(0.01, A_max, A_steps);
+fig = figure('Position', [50 50 1300 850]);
 
-%% Build cubic interaction tensor
-C = zeros(Nmodes,Nmodes,Nmodes,Nmodes);
-for kk = 1:Nmodes
-    for mm = 1:Nmodes
-        for nn = 1:Nmodes
-            for pp = 1:Nmodes
-                if K(mm)+K(nn)+K(pp) == K(kk)
-                    C(kk,mm,nn,pp) = 1;
-                end
-            end
-        end
-    end
+%% Plot 1: m = 0
+subplot(2, 2, 1); hold on; box on; grid on;
+plot([0, 1], [0, 0], 'k-', 'LineWidth', 2, 'DisplayName', 'Tivial mode');
+colors = lines(length(modes));
+
+for i = 1:length(modes)
+    k = modes(i);
+    [mu_v, norm_v, ~, ~] = trace_branch_spectral(k, m1, L, 1, N);
+    plot(mu_v, norm_v, '-', 'Color', colors(i,:), 'LineWidth', 2, ...
+        'DisplayName', sprintf('Mode %d', k));
 end
+xlabel('\mu', 'FontSize', 12); ylabel('||u - m||_{L_2}', 'FontSize', 12);
+title(sprintf('Bifurcation Diagram (m = %g, Unstable)', m1), 'FontSize', 12);
+xlim([0, 0.4]); ylim([0, 1.2]);
+legend('Location', 'northwest', 'FontSize', 10);
 
-%% Run Continuation for two masses
-masses = [0, m];
-titles = {'m = 0', sprintf('m = %.3f', m)};
+%% Plot 2: m \neq 0
+subplot(2, 2, 2); hold on; box on; grid on;
+plot([0, 1], [0, 0], 'k-', 'LineWidth', 2, 'DisplayName', 'Trivial mode');
 
-fig1 = figure('Position', [100, 100, 1200, 500], 'Name', 'Bifurcation Diagram: L2 Norm');
-fig2 = figure('Position', [100, 650, 1200, 500], 'Name', 'Bifurcation Diagram: Amplitudes');
+p_mu_p = {}; p_prof_p = {}; 
+p_mu_n = {}; p_prof_n = {}; 
 
-colors = lines(Kmax);
-
-for m_idx = 1:length(masses)
-    m = masses(m_idx);
+for i = 1:length(modes)
+    k = modes(i);
+    % Trace both peak (droplet) and valley (bubble) branches
+    [mu_p, norm_p, prof_p, x_plot] = trace_branch_spectral(k, m2, L, 1);  
+    [mu_n, norm_n, prof_n, ~]      = trace_branch_spectral(k, m2, L, -1); 
     
-    % Prepare plots
-    figure(fig1); subplot(1, 2, m_idx); hold on; grid on;
-    xlabel('\mu'); ylabel('||u||_2');
-    title(titles{m_idx});
+    p_mu_p{i} = mu_p; p_prof_p{i} = prof_p;
+    p_mu_n{i} = mu_n; p_prof_n{i} = prof_n;
     
-    figure(fig2); subplot(1, 2, m_idx); hold on; grid on;
-    xlabel('\mu'); ylabel('Primary Mode Amplitude |U_k|');
-    title(titles{m_idx});
-    
-    % Plot trivial branch (u = m)
-    mu_plot = linspace(0, 1.5, 100);
-    L2_trivial = abs(m) * ones(size(mu_plot));
-    
-    figure(fig1); plot(mu_plot, L2_trivial, 'k-', 'LineWidth', 2, 'DisplayName', 'Trivial Branch');
-    figure(fig2); plot(mu_plot, zeros(size(mu_plot)), 'k-', 'LineWidth', 2, 'DisplayName', 'Trivial Branch');
-    
-    % Trace branches for the first 4 modes
-    for k_target = 1:4
-        
-        mu_branch = zeros(A_steps, 1);
-        L2_branch = zeros(A_steps, 1);
-        
-        % Initial guess: mu = critical mu, all other mode amplitudes = 0
-        mu_crit = 3*m^2 + (k_target/L)^2;
-        vars0 = zeros(Kmax, 1);
-        vars0(k_target) = mu_crit; 
-        
-        % Step through amplitudes
-        for a_idx = 1:A_steps
-            A = A_vec(a_idx);
-            
-            % Use our custom base-MATLAB Newton solver instead of fsolve
-            target_fun = @(v) stationary_rhs(v, A, k_target, m, L, K, C);
-            [vars, success] = newton_solve(target_fun, vars0);
-            
-            if ~success
-                fprintf('Warning: Newton solver failed to converge at A = %.3f for mode %d\n', A, k_target);
-            end
-            
-            % Extract results
-            mu_branch(a_idx) = vars(k_target);
-            
-            % Reconstruct full U vector to compute L2 norm
-            U = zeros(Nmodes, 1);
-            U(index_of(0)) = m;
-            for j = 1:Kmax
-                if j == k_target
-                    U(index_of(j)) = A; U(index_of(-j)) = A;
-                else
-                    U(index_of(j)) = vars(j); U(index_of(-j)) = vars(j);
-                end
-            end
-            
-            % L2 norm is exactly the norm of the Fourier coefficients
-            L2_branch(a_idx) = sqrt(sum(abs(U).^2));
-            
-            % Update guess for next amplitude step to ensure smooth continuation
-            vars0 = vars;
-        end
-        
-        % Plot the branch
-        figure(fig1);
-        plot(mu_branch, L2_branch, 'Color', colors(k_target,:), 'LineWidth', 2, ...
-             'DisplayName', sprintf('Mode k = %d', k_target));
-         
-        % Plot theoretical bifurcation point
-        plot(mu_crit, abs(m), 'o', 'MarkerFaceColor', colors(k_target,:), ...
-             'MarkerEdgeColor', 'k', 'MarkerSize', 8, 'HandleVisibility','off');
-         
-        figure(fig2);
-        plot(mu_branch, A_vec, 'Color', colors(k_target,:), 'LineWidth', 2, ...
-             'DisplayName', sprintf('Mode k = %d', k_target));
-        plot(mu_crit, 0, 'o', 'MarkerFaceColor', colors(k_target,:), ...
-             'MarkerEdgeColor', 'k', 'MarkerSize', 8, 'HandleVisibility','off');
-    end
-    
-    figure(fig1); xlim([0, 1.5]); legend('Location', 'northwest');
-    figure(fig2); xlim([0, 1.5]); legend('Location', 'northwest');
+    plot(mu_p, norm_p, '-', 'Color', colors(i,:), 'LineWidth', 2, ...
+        'DisplayName', sprintf('Mode %d', k));
+    plot(mu_n, norm_n, '--', 'Color', colors(i,:), 'LineWidth', 2, ...
+        'HandleVisibility', 'off');
 end
+xlabel('\mu', 'FontSize', 12); ylabel('||u - m||_{L_2}', 'FontSize', 12);
+title(sprintf('Bifurcation Diagram (m = %g, Transitional)', m2), 'FontSize', 12);
+xlim([0.4, 0.9]); ylim([0, 1.2]);
+legend('Location', 'northwest', 'FontSize', 10);
+text(0.42, 1.1, 'Solid: Droplet (Peak at x=0)', 'FontSize', 10, 'BackgroundColor', 'w');
+text(0.42, 1.0, 'Dashed: Bubble (Valley at x=0)', 'FontSize', 10, 'BackgroundColor', 'w');
 
-%% Helper Function: Evaluates the stationary Galerkin RHS
-function F = stationary_rhs(vars, A, k_target, m, L, K, C)
-    Kmax = max(K);
-    Nmodes = length(K);
+%% Plot 3: Profiles for m \neq 0 (Mode 1, Peak branch)
+subplot(2, 2, 3); hold on; box on; grid on;
+idx_list = round(linspace(1, size(p_prof_p{1}, 2), 6));
+cc = parula(length(idx_list) + 1);
+
+for i = 1:length(idx_list)
+    idx = idx_list(i);
+    plot(x_plot, p_prof_p{1}(:, idx), 'Color', cc(i,:), 'LineWidth', 1.5, ...
+        'DisplayName', sprintf('\\mu = %.3f', p_mu_p{1}(idx)));
+end
+yline(m2, 'k--', 'LineWidth', 1, 'DisplayName', 'm=0.5 (Mean)');
+xlabel('x'); ylabel('u(x)');
+title('Mode 1 Profiles: Dense Droplet Phase');
+xlim([-pi*L, pi*L]);
+legend('Location', 'northeast', 'NumColumns', 2);
+
+%% Plot 4: Profiles for m \neq 0 (Mode 1, valley branch)
+subplot(2, 2, 4); hold on; box on; grid on;
+idx_list2 = round(linspace(1, size(p_prof_n{1}, 2), 6));
+
+for i = 1:length(idx_list2)
+    idx = idx_list2(i);
+    plot(x_plot, p_prof_n{1}(:, idx), 'Color', cc(i,:), 'LineWidth', 1.5, ...
+        'DisplayName', sprintf('\\mu = %.3f', p_mu_n{1}(idx)));
+end
+yline(m2, 'k--', 'LineWidth', 1, 'DisplayName', 'm=0.5 (Mean)');
+xlabel('x'); ylabel('u(x)');
+title('Mode 1 Profiles: Dilute Bubble Phase');
+xlim([-pi*L, pi*L]);
+legend('Location', 'northeast', 'NumColumns', 2);
+
+sgtitle('Cahn-Hilliard Steady-State Bifurcations (Spectral Collocation + fsolve)', ...
+        'FontSize', 14, 'FontWeight', 'bold');
+
+% =========================================================================
+% FOURIER PSEUDOSPECTRAL AMPLITUDE CONTINUATION
+% =========================================================================
+
+function [mu_vec, norm_vec, prof_u, x_plot] = trace_branch_spectral(mode_n, m, L, signA, N)
+    % Grid setup: N must be even. 
+    % We solve on [-pi*L, pi*L) so x=0 is exactly in the middle.
+    x = (2*pi*L/N) * (-N/2 : N/2-1)';
+    idx_0 = N/2 + 1; % The exact index where x = 0
     
-    U = zeros(Nmodes, 1);
-    idx_zero = find(K==0);
-    U(idx_zero) = m;
+    % Build the explicit N x N Spectral Second Derivative Matrix (D2)
+    n_vec = [0:N/2-1 0 -N/2+1:-1]';
+    k_vec = n_vec / L;
+    % D2 operates on a vector u equivalent to ifft(-k^2 .* fft(u))
+    D2 = real(ifft(bsxfun(@times, -k_vec.^2, fft(eye(N))))); 
     
-    mu = 0;
-    for j = 1:Kmax
-        idx_pos = find(K==j);
-        idx_neg = find(K==-j);
-        if j == k_target
-            U(idx_pos) = A;
-            U(idx_neg) = A;
-            mu = vars(j);
+    % Analytical critical bifurcation point
+    mu_crit = 3*m^2 + (mode_n/L)^2; 
+    
+    % Adaptive amplitude stepping
+    A_max = 1.2 * signA;
+    dA_base = 0.02 * signA;
+    dA = dA_base;
+    A_curr = dA;
+    
+    mu_vec = []; norm_vec = []; prof_u = [];
+    
+    % Initial Guess for fsolve
+    u_guess = m + A_curr * cos(mode_n * x / L);
+    C_guess = mu_crit * m - m^3;
+    X0 = [u_guess; mu_crit; C_guess]; % Vector of unknowns: [u_1...u_N, mu, C]
+    
+    options = optimoptions('fsolve', 'Display', 'none', ...
+                           'FunctionTolerance', 1e-6, ...
+                           'StepTolerance', 1e-6);
+    
+    while abs(A_curr) <= abs(A_max)
+        % Pin the amplitude at x=0
+        U0 = m + A_curr; 
+        
+        [X_sol, fval, exitflag] = fsolve(@(X) spectral_sys(X, m, U0, D2, N, idx_0), X0, options);
+        
+        if exitflag > 0 && norm(fval) < 1e-4
+            % Extract solution variables
+            u_sol = X_sol(1:N);
+            mu_sol = X_sol(N+1);
+            
+            % Save metrics
+            mu_vec(end+1) = mu_sol;
+            
+            % L2 Norm on a periodic grid is simply the RMS of the variance
+            norm_vec(end+1) = sqrt(mean((u_sol - m).^2));
+            
+            % Close the periodic boundary for clean plotting
+            x_plot = [x; pi*L]; 
+            prof_u(:, end+1) = [u_sol; u_sol(1)];
+            
+            % Update for next step
+            X0 = X_sol; 
+            A_curr = A_curr + dA;
+            dA = sign(dA) * min(abs(dA)*1.2, abs(dA_base)); % Gently increase step
+            
         else
-            U(idx_pos) = vars(j);
-            U(idx_neg) = vars(j);
-        end
-    end
-    
-    F = zeros(Kmax, 1);
-    for j = 1:Kmax
-        idx_j = find(K==j);
-        nonlinear = 0;
-        for mm = 1:Nmodes
-            for nn = 1:Nmodes
-                for pp = 1:Nmodes
-                    if C(idx_j, mm, nn, pp)
-                        nonlinear = nonlinear + U(mm)*U(nn)*U(pp);
-                    end
-                end
+            % Solver failed (step too large). Shrink step and retry.
+            dA = dA / 2;
+            if abs(dA) < 1e-4
+                break; % Hit the limit of the branch
             end
         end
-        F(j) = (mu - j^2/L^2) * U(idx_j) - nonlinear;
     end
 end
 
-%% Custom Newton-Raphson Solver (Replaces fsolve)
-function [x, success] = newton_solve(fun, x0)
-    % A simple implementation of Newton's method with a numerical Jacobian
-    max_iter = 50;
-    tol = 1e-10;
-    dx = 1e-6; % Step size for numerical derivative
+% Discretized Nonlinear System (N+2 Equations)
+function F = spectral_sys(X, m, U0, D2, N, idx_0)
+    % Unpack
+    u = X(1:N);
+    mu = X(N+1);
+    C = X(N+2);
     
-    x = x0;
-    n = length(x);
-    success = false;
+    % 1. Pseudospectral PDE evaluation (D2*u is the spectral u_xx)
+    F_pde = D2*u + mu*u - u.^3 - C;
     
-    for iter = 1:max_iter
-        F = fun(x);
-        
-        % Check for convergence
-        if norm(F) < tol
-            success = true;
-            break;
-        end
-        
-        % Approximate Jacobian matrix numerically
-        J = zeros(n, n);
-        for j = 1:n
-            x_step = x;
-            x_step(j) = x_step(j) + dx;
-            F_step = fun(x_step);
-            J(:, j) = (F_step - F) / dx;
-        end
-        
-        % Solve for the Newton step (J * step = F) and update
-        % Using the pseudo-inverse/backslash operator
-        step = J \ F;
-        x = x - step;
-    end
+    % 2. Mass conservation (mean of u must equal m)
+    F_mass = mean(u) - m;
+    
+    % 3. Amplitude constraint: Pin the center point (x=0) to exactly U0
+    F_amp = u(idx_0) - U0;
+    
+    % Combine residuals
+    F = [F_pde; F_mass; F_amp];
 end

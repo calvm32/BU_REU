@@ -25,7 +25,7 @@ t0 = -0.2 / epsilon;
 T = mu_final/epsilon;
 m = 0.5; % final mass
 
-K = -5:5;
+K = -3:3;
 Nmodes = length(K);
 index_of = @(k) find(K==k);
 
