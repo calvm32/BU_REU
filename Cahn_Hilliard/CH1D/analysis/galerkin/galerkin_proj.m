@@ -3,7 +3,7 @@ clc; clear; close all;
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
-%% Description and configuration
+%% Description
 % Galerkin projection of 1D Cahn-Hilliard
 %
 % u_t = -d_xx(d_xx u + mu(t)u - u^3)
@@ -19,13 +19,13 @@ clc; clear; close all;
 
 
 %% Parameters
-epsilon  = 10^(-4);
+epsilon = 10^(-4);
 mu_final = 0.5;
-t0       = -0.2 / epsilon;
-T        = mu_final/epsilon;
-m        = 0.5; % final mass
+t0 = -0.2 / epsilon;
+T = mu_final/epsilon;
+m = 0.5; % final mass
 
-K = -5:5;
+K = -3:3;
 Nmodes = length(K);
 index_of = @(k) find(K==k);
 
@@ -34,29 +34,21 @@ Lx = L*pi;
 
 %% Movie / frame parameters
 
-Nframes        = 200;                       % number of evenly-spaced mu-frames
-tspan          = linspace(t0,T,Nframes);    % uniform in t => uniform in mu since mu=eps*t
-mu_vec_target  = epsilon*tspan;             % the mu-axis we evolve over
+Nframes  = 200;                     % number of evenly-spaced mu-frames
+tspan = linspace(t0,T,Nframes);     % uniform in t => uniform in mu since mu=eps*t
+mu_vec_target = epsilon*tspan;      % the mu-axis we evolve over
+mu0 = epsilon*t0;
 
-eq_window      = 10;                        % # consecutive frames the dominant mode must hold to call it "equilibrium"
+eq_window = 10;                     % # consecutive frames the dominant mode must hold to call it "equilibrium"
 
 %% Build cubic interaction tensor
 C = zeros(Nmodes,Nmodes,Nmodes,Nmodes);
-
 for kk = 1:Nmodes
-    k = K(kk);
-    
     for mm = 1:Nmodes
-        km = K(mm);
-        
         for nn = 1:Nmodes
-            kn = K(nn);
-            
             for pp = 1:Nmodes
-                kp = K(pp);
-                
-                if km+kn+kp==k
-                    C(kk,mm,nn,pp)=1;
+                if K(mm)+K(nn)+K(pp) == K(kk)
+                    C(kk,mm,nn,pp) = 1;
                 end
             end
         end
@@ -65,10 +57,8 @@ end
 
 
 %% Print the ODE system being solved (human-readable, built from K and C)
-
 print_galerkin_odes(K, C, L, m);
 
-%% Initial condition
 %% Initial condition
 rng(1)
 
@@ -125,11 +115,11 @@ end
 
 mu_select = find_selection_time(kdom_hist, mu_vec, eq_window);
 
-if isnan(mu_select)
-    fprintf('Equilibrium not detected within simulation window.\n');
-else
-    fprintf('Equilibrium (mode selection) first reached at mu = %.4f\n', mu_select);
-end
+% if isnan(mu_select)
+%     fprintf('Equilibrium not detected within simulation window.\n');
+% else
+%     fprintf('Equilibrium (mode selection) first reached at mu = %.4f\n', mu_select);
+% end
 
 k_ref = 0:6;     % integer Galerkin modes |k| = 0..3 matter most, but keep a few extra for context
 
@@ -175,13 +165,13 @@ for j = 1:length(t)
     subplot(2,2,3)
     stairs(mu_vec(1:j), kdom_hist(1:j), 'LineWidth', 2, 'Color', [0.49 0.18 0.56])
     hold on
-    for kj = k_ref
-        yline(kj, '--r', 'Alpha', 0.3)
-    end
-    if ~isnan(mu_select) && mu_now >= mu_select
-        xline(mu_select, '-g', 'LineWidth', 1.5, ...
-            'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
-    end
+    % for kj = k_ref
+    %     yline(kj, '--r', 'Alpha', 0.3)
+    % end
+    % if ~isnan(mu_select) && mu_now >= mu_select
+    %     xline(mu_select, '-g', 'LineWidth', 1.5, ...
+    %         'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+    % end
     hold off
     xlabel('\mu'); ylabel('dominant |k|')
     xlim([mu_vec(1) mu_vec(end)])
@@ -193,14 +183,14 @@ for j = 1:length(t)
     subplot(2,2,4)
     plot(mu_vec(1:j), L2_hist(1:j), 'LineWidth', 1.5, 'Color', [0.13 0.55 0.55])
     hold on
-    if ~isnan(mu_select) && mu_now >= mu_select
-        xline(mu_select, '--g', 'LineWidth', 1.5, ...
-            'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
-        eq_idx = find(mu_vec(1:j) >= mu_select, 1);
-        if ~isempty(eq_idx)
-            plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
-        end
-    end
+    % if ~isnan(mu_select) && mu_now >= mu_select
+    %     xline(mu_select, '--g', 'LineWidth', 1.5, ...
+    %         'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+    %     eq_idx = find(mu_vec(1:j) >= mu_select, 1);
+    %     if ~isempty(eq_idx)
+    %         plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
+    %     end
+    % end
     hold off
     xlabel('\mu'); ylabel('||u||_2')
     xlim([mu_vec(1) mu_vec(end)])
@@ -208,8 +198,8 @@ for j = 1:length(t)
     title('L_2 norm vs \mu')
     grid on
     
-    sgtitle(sprintf('Galerkin Cahn-Hilliard    \\epsilon=%.4f    \\mu(t)=\\epsilon t    \\mu = %.3f / %.3f', ...
-                     epsilon, mu_now, mu_vec(end))) 
+    sgtitle(sprintf('Galerkin Cahn-Hilliard    \\epsilon=%.4f    \\mu(t)=\\epsilon t    \\mu = %.3f / %.3f    m = %.3f', ...
+                     epsilon, mu_now, mu_vec(end), m)) 
     
     drawnow;
     frame = getframe(fig);
@@ -240,13 +230,13 @@ grid on
 subplot(2,2,3)
 stairs(mu_vec, kdom_hist, 'LineWidth', 2, 'Color', [0.49 0.18 0.56])
 hold on
-for kj = k_ref
-    yline(kj, '--r', 'Alpha', 0.3)
-end
-if ~isnan(mu_select)
-    xline(mu_select, '-g', 'LineWidth', 1.5, ...
-        'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
-end
+% for kj = k_ref
+%     yline(kj, '--r', 'Alpha', 0.3)
+% end
+% if ~isnan(mu_select)
+%     xline(mu_select, '-g', 'LineWidth', 1.5, ...
+%         'Label', sprintf('eq. at \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+% end
 hold off
 xlabel('\mu'); ylabel('dominant |k|')
 title('Dominant wavenumber vs \mu')
@@ -255,12 +245,12 @@ grid on
 subplot(2,2,4)
 plot(mu_vec, L2_hist, 'LineWidth', 1.5, 'Color', [0.13 0.55 0.55])
 hold on
-if ~isnan(mu_select)
-    xline(mu_select, '--g', 'LineWidth', 1.5, ...
-        'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
-    eq_idx = find(mu_vec >= mu_select, 1);
-    plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
-end
+% if ~isnan(mu_select)
+%     xline(mu_select, '--g', 'LineWidth', 1.5, ...
+%         'Label', sprintf('eq. \\mu=%.2f', mu_select), 'LabelVerticalAlignment','bottom')
+%     eq_idx = find(mu_vec >= mu_select, 1);
+%     plot(mu_vec(eq_idx), L2_hist(eq_idx), 'og', 'MarkerSize', 8, 'MarkerFaceColor','g')
+% end
 hold off
 xlabel('\mu'); ylabel('||u||_2')
 title('L_2 norm vs \mu')
@@ -341,7 +331,7 @@ function print_galerkin_odes(K, C, L, m)
     for kk = 1:Nmodes
         k = K(kk);
         
-        % ---- collect & group nonlinear (cubic) terms from C ----
+        % collect & group nonlinear (cubic) terms from C
         terms = containers.Map('KeyType','char','ValueType','double');
         
         for mm = 1:Nmodes
@@ -373,10 +363,10 @@ function print_galerkin_odes(K, C, L, m)
             nl_str = strjoin(nl_parts, ' + ');
         end
         
-        % ---- linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2 ----
+        % linear coefficient lambda_k(mu) = -k^4/L^4 + mu*k^2/L^2
         lin_str = format_linear(k);
         
-        % ---- prefactor on the bracket, -(k^2/L^2) ----
+        % prefactor on the bracket, -(k^2/L^2)
         if k == 0
             fprintf('du_{%d}/dt = -0/L^2 * [ %s ]      (mean mode: no linear growth term)\n\n', ...
                 k, nl_str);
@@ -396,14 +386,10 @@ end
 
 
 %% formatting
-
 function s = format_monomial(coeff, idxs)
     
-    % count how many zero modes appear
-    nzero = sum(idxs==0);
-    
-    % remove them
-    idxs = idxs(idxs~=0);
+    nzero = sum(idxs==0); % count how many zero modes appear
+    idxs = idxs(idxs~=0); % remove them
     
     % base numeric coefficient string (suppress "1" if m will be present)
     if coeff == 1 && nzero > 0
@@ -482,15 +468,33 @@ function rfun = r_k(k, L, epsilon, t0)
     rfun = @(t) (const_term(t).*img_term(t) + r_k_0^(-2)*IC_term(t)).^(-1/2);
 end
 
-function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)
+function [MUS, KS] = critical_bifurcation_eig(j, L, mass, mu0)
     % Computes the j'th frequencies critical mu and associated eigenvalue
     KS = 2 * pi * j./ L;
     MUS = -mu0 + 2*(3 * mass^2 + KS.^2);    
 end
 
+function [MUS, KS] = critical_bifurcation(j, L, mass)
+    % Computes the j'th frequencies critical mu and associated eigenvalue
+    KS = 2 * pi * j./ L;
+    MUS = KS.^2 + 3*mass^2;    
+end
+
 %% Print Critical Bifurcations
 fprintf('========================================================\n');
-fprintf(' Theoretical Critical Bifurcations\n');
+fprintf(' Theoretical Critical Bifurcations (integrated eig)\n');
+fprintf('========================================================\n');
+for kk = 1:Nmodes
+    k_val = K(kk);
+    if k_val >= 0 % Only print for positive wave numbers
+        [mu_crit, ks_val] = critical_bifurcation_eig(k_val, L, m, mu0);
+        fprintf('Mode |k| = %2d : Critical mu = %.4f\n', k_val, mu_crit);
+    end
+end
+fprintf('\n');
+
+fprintf('========================================================\n');
+fprintf(' Theoretical Critical Bifurcations (eigenvalue)\n');
 fprintf('========================================================\n');
 for kk = 1:Nmodes
     k_val = K(kk);

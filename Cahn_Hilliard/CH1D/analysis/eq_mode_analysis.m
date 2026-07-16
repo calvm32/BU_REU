@@ -855,13 +855,12 @@ switch type
         %   - After all runs: plot t_eq vs theoretical activation time t_k = 2*k_hat^2/epsilon
         %     and overlay the k*(t) = sqrt(mu(t)/2) drift curve
 
-        % ---- parameters you may want to tune -------------------------
+        % parameters you may want to tun
         epsilon_6   = epsilon;          % uses the epsilon defined at top of script
         IC_modes_6  = 1:xscale;        % single-mode ICs to sweep (skip 0 — trivial)
         num_runs_6  = num_runs;         % runs per IC (for noise robustness; IC is deterministic
                                         % so >1 run only matters if you add noise — set 1 for speed)
         record_every = 5;              % record dominant mode every N time steps (keeps video manageable)
-        % --------------------------------------------------------------
 
         mu_6    = @(t_val) epsilon_6 * t_val;
         T_6     = mu_final / epsilon_6;
@@ -942,7 +941,7 @@ switch type
             fprintf('Case 6: IC mode %d/%d done\n', ic, num_IC_6);
         end
 
-        % ---- all mode values that appear (for axis limits) ----------
+        % all mode values that appear (for axis limits)
         all_modes_6 = unique([IC_modes_6, reshape(dom_mode_hist, 1, [])]);
         all_modes_6 = all_modes_6(~isnan(all_modes_6));
         y_axis_6    = 0:max(all_modes_6);   % eq. mode axis includes 0
@@ -1031,7 +1030,7 @@ switch type
 
         fig6b = figure('Position', [100 100 1100 500]);
 
-        % --- Left panel: t_eq vs IC mode, overlaid with t_k theory ---
+        % Left panel: t_eq vs IC mode, overlaid with t_k theory
         subplot(1,2,1)
         scatter(IC_modes_6, t_eq_6, 60, IC_modes_6, 'filled', 'DisplayName', 't_{eq} (empirical)')
         hold on
@@ -1052,7 +1051,7 @@ switch type
         legend('Location', 'northwest', 'FontSize', 9)
         grid on
 
-        % --- Right panel: scatter of t_eq vs t_k (should be linear if theory holds) ---
+        % Right panel: scatter of t_eq vs t_k (should be linear if theory holds)
         subplot(1,2,2)
 
         % Only plot ICs where t_eq was detected (not NaN)

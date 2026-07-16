@@ -33,7 +33,7 @@ fprintf('Initializing Galerkin ODE at mu = %.6f (PDE index %d)\n', mu_start, idx
 %% Parameters
 mu_final = max(mu_pde); 
 
-% --- CHANGE THIS TO PLOT MORE MODES ---
+% CHANGE THIS TO PLOT MORE MODES
 K = -6:6; 
 K_max = max(K);
 % --------------------------------------

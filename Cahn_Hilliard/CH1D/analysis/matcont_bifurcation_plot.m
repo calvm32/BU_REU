@@ -3,7 +3,7 @@ clc; clear; close all;
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
-%% Description and configuration
+%% Description
 % Uses Galerkin projection of 1D Cahn-Hilliard
 %
 % u_t = -d_xx(d_xx u + mu(t)u - u^3)

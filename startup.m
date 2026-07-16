@@ -1,4 +1,8 @@
-project_root = '~/Documents/MATLAB/BU_REU';
+% get root dir
+project_root = fileparts(mfilename('fullpath'));
 
+% add entire project to MATLAB path
 addpath(genpath(project_root));
-savepath; % optional, makes it permanent
+
+% optional: save path for future MATLAB sessions
+savepath; 

@@ -3,7 +3,7 @@ clear all; close all;
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
-%% Description and configuration
+%% Description
 % Blueprint and solver of CH
 % mu ramped linearly
 

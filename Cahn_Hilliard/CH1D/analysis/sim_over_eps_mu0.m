@@ -47,7 +47,7 @@ u_hat0 = fft(u0);
 % Start the parallel pool
 p = gcp(); 
 
-%% --- PROGRESS BAR SETUP ---
+%% PROGRESS BAR SETUP
 q = parallel.pool.DataQueue;
 
 % Define the callback function that executes on the main thread
@@ -78,7 +78,7 @@ function update_parallel_progress(num_tasks)
         progress_counter = []; % Reset the counter so it works on the next run
     end
 end
-%% ---------------------------
+%%------------------------
 
 %% Parallel Sweep Loop
 parfor idx = 1:num_total_sims
@@ -123,6 +123,6 @@ parfor idx = 1:num_total_sims
  
     save(filename, "-fromstruct", s);
 
-    %% --- SEND UPDATE TO QUEUE ---
+    %% SEND UPDATE TO QUEUE
     send(q, idx);
 end
