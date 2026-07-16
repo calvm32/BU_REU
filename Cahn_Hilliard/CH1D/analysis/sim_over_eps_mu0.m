@@ -23,8 +23,7 @@ flat_AMP_HISTS = cell(num_total_sims, 1);
 dt0 = 0.02; 
 mass = 0; 
 muf = 2.0; 
-xscale = 10; 
-Lx = xscale*pi; 
+Lx = 10*pi; 
 Nx = 2^10;
 
 dx = 2*Lx/Nx; 
@@ -115,19 +114,15 @@ parfor idx = 1:num_total_sims
     
     dominate_modes = monitor.dominate_mode(1:monitor.dom_mode_ind, :);
 
-    flat_TIME_HIST(idx) = {monitor.t_grid(1:monitor.step_idx)}
-    flat_DMODE_HIST(idx) =  {dominate_modes};
-    flat_L2_HIST(idx) = {monitor.l2_history(1:monitor.step_idx)};
-    flat_AMP_HISTS(idx) = {monitor.amp_history(:, 1:monitor.step_idx)}
+    filename = fsprintf('sample_ep=1e%.5f_mu0=%.7f_%s', log10(ep), mu0, 'Float64');
+    s = struct("DMODE_HIST", dominate_modes, ...
+               "L2_HIST", monitor.l2_history(1:monitor.step_idx), ...
+               "AMP_HISTS", monitor.amp_history(:, 1:monitor.step_idx), ...
+               "ep", ep, "mu0", mu0, "Lx", Lx, "Nx", Nx, "dt", dt, ...
+               "terminate_thr", terminate_thr, 'datatype', 'Float64')
+ 
+    save(filename, "-fromstruct", s);
 
     %% --- SEND UPDATE TO QUEUE ---
     send(q, idx);
 end
-
-TIME_HIST = reshape(flat_TIME_HIST, length(EP), length(MU0));
-DMODE_HIST = reshape(flat_DMODE_HIST, length(EP), length(MU0));
-L2_HIST = reshape(flat_L2_HIST, length(EP), length(MU0));
-AMP_HISTS = reshape(flat_AMP_HISTS, length(EP), length(MU0));
-
-%% Save Collective 2D Grid Results
-save('grid_sample.mat', 'TIME_HIST', 'L2_HIST', 'DMODE_HIST', 'AMP_HISTS', 'EP', 'MU0', 'Lx', 'Nx', 'terminate_thr');
