@@ -1,5 +1,5 @@
 classdef BifurcationMonitorHeadless < SimulationMonitor
-    %BIFURCATIONMONITORNOPLOT A monitor for bifurcation and mode surpass analysis.
+    % BIFURCATIONMONITORNOPLOT A monitor for bifurcation and mode surpass analysis.
     % Records L2 norm and dominant Fourier mode history
 
     properties (SetAccess = private)
@@ -16,6 +16,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         dominate_mode double % 2D array: [t, dom_mode]
         dom_mode_ind = 1
         amp_history double
+        mass double
 
         step_idx = 0
     end
@@ -34,6 +35,8 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         end
 
         function initialize(obj, u0_hat, t_grid)
+            % NOTE: CHANGE THIS FOR MASS SUBTRACTION
+            obj.mass = u0_hat(1);
             num_steps = length(t_grid);
             obj.t_grid = t_grid;
             obj.mu_grid = obj.mu(t_grid);
@@ -63,7 +66,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.amp_history(:, obj.step_idx) = abs(u_hat(2:6) / obj.Nx); % TODO: Update so that 5 is a parameter
 
             % Dominate mode computation (excludes the mean mode)
-            [~, max_index] = max(abs(u_hat - mean(u)));
+            [~, max_index] = max(abs(u_hat - obj.mass));
             dom_mode = obj.kx(max_index);
 
             if obj.dom_mode_ind == 0 || obj.dominate_mode(obj.dom_mode_ind, 2) ~= dom_mode

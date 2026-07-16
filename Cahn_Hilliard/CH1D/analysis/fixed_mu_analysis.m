@@ -11,25 +11,42 @@ clc; clear; close all;
 % ------------------------------------------------------------------------------------------
 
 %% Parameters
-t0 = 0.0;
-T  = 300;
-dt = 0.1;
+t0 = 0;
+T  = 8000;
+dt = 0.5;
+max_mode_num = 12;
+L = 10;
 
-mass = 0;
+start_time = 0;
 
-xscale = 6;
-Lx = xscale*pi;
+% choose max subcritical, get n
+n_subc = 2; % 1,...,n modes = subcritical, n+1,... modes = supercritical
+mass = (2*n_subc+1)*sqrt(2)/20; 
+
+n_check = 2;
+mu_n = 3*mass^2 + (n_check/L)^2;
+mu_next = 3*mass^2 + ((n_check + 1)/L)^2;
+mu = (mu_n + mu_next)/2;
+
+k_hat = @(k) (k^2)/(L^2);
+lambda_k = @(k) k_hat(k) * ( -k_hat(k) + mu - k_hat(k)*mass^2 );
+disp(lambda_k(1))
+
+disp(sprintf('using mass = %.2f', mass))
+disp(sprintf('using m    = %.2f', mu))
+
+Lx = L*pi;
 Nx = 2^12;
 
-[mu, ~] = critical_bifurcation(5, 2 * Lx, mass);
-
-plot_dt = 4.0; 
+plot_dt = 12.0; 
 plot_every = round(plot_dt / dt);
 save_video = true;
 
+save_every = 8.0;
+
 % Find k_j's for initial data
-k_j = pi * [0:7] / Lx;
-k_i = k_j(2:8);
+k_j = pi * [0:max_mode_num+1] / Lx;
+k_i = k_j(2:max_mode_num+2);
 
 % discretization
 dx = 2*Lx/Nx;
@@ -46,15 +63,18 @@ dealias_mask = abs(kx) <= (2/3)*kx_max;
 %% Loop over all k_i
 for m = 1:length(k_i)
     k = k_i(m);
-    fprintf('Running k = %.4f\n', k);
+    fprintf('Running k  = %.4f\n', k);
+    fprintf('transcritical value  = %.4f\n', lambda_k(k)/mass);
 
     % Zero mean white noise
-    noise = 0.0002 * (rand(1, Nx) - 0.5);
-    noise = noise - mean(noise);
+    % noise = 0.0002 * (rand(1, Nx) - 0.5);
+    % noise = noise - mean(noise);
     
     % Start at k_bif
-    u0 = 0.001*cos(k * x) + mass + noise;
-    u0_hat = fft(u0);
+    u0 = 0.01*cos(0 * x) + mass;
+    u0_hat = 10^(-5)*ones(1,Nx)*Nx; %fft(u0);
+
+    u0_hat(1) = mass*Nx;
 
     % Define problem
     nonlin_op = @(u_hat, t) dealias_mask .* Laplacian_hat .* fft( real(ifft(u_hat)).^3 - mu*real(ifft(u_hat)) );

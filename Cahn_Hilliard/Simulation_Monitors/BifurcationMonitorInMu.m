@@ -51,6 +51,8 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
         end
 
         function initialize(obj, u0_hat, t_grid)
+            initialize@BifurcationMonitorHeadless(obj, u0_hat, t_grid);
+
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
@@ -78,11 +80,20 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
             obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
-            labels = cellstr("k_" + (0:numel(obj.k_j)-1));
+            labels = cellstr("k_{" + (0:numel(obj.k_j)-1) + "}");
             yline(obj.ax3, obj.k_j, '--r', labels, 'LineWidth', 2);    
             xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
-            xlim(obj.ax3, obj.mu(t_grid([1, end])));
+            %xlim(obj.ax3, obj.mu(t_grid([1, end])));
+            mu_limits = obj.mu(t_grid([1, end]));
+
+            if mu_limits(1) == mu_limits(2)
+                % Constant mu: give a small symmetric padding
+                pad = max(1e-6, 0.05 * max(abs(mu_limits(1)), 1));
+                mu_limits = mu_limits + [-pad, pad];
+            end
+
+            xlim(obj.ax3, mu_limits);
             ylim(obj.ax3, [0, obj.k_j(end)]); 
             grid(obj.ax3, 'on');
 
@@ -104,7 +115,9 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
                 open(obj.v);
             end
             
-            initialize@BifurcationMonitorHeadless(obj, u0_hat, t_grid);
+            
+
+            obj.update(u0_hat, t_grid(1));
         end
 
         function update(obj, u_hat, t)
