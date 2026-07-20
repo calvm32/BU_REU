@@ -236,8 +236,8 @@ function run_grid_simulation(T_type::Type{T}) where {T}
     Nx = 512
     dt0 = T(0.02)
     muf = T(2.0)
-    xscale = T(10.0)
-    Lx = xscale * T(pi)
+    L = T(10.0)
+    Lx = L * T(pi)
     terminate_thr = T(5.0)
     
     # Fourier wavenumbers + linear operator

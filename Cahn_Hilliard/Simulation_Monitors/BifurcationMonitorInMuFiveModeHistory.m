@@ -10,12 +10,14 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
         save_video (1, 1) logical
         video_filename string
         video_framerate (1, 1) double
+        local_mass (1, 1) double
 
         % Plotting handles
         fig
         hLine1
         l2_line
         amp_plots
+        crit_lines
         hLine3  
         ax1
         ax2
@@ -40,18 +42,26 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
                 options.save_video (1, 1) logical = false
                 options.video_filename string = "bifurcation_movie.avi"
                 options.video_framerate (1, 1) double = 30
+                options.subtract_mass logical = false
+                options.local_mass double = 0
             end
 
-            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx);
+            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx, 'subtract_mass', options.subtract_mass);
             obj.x = x;
             obj.k_j = k_j;
             obj.plot_every = options.plot_every;
             obj.save_video = options.save_video;
             obj.video_filename = options.video_filename;
             obj.video_framerate = options.video_framerate;
+            obj.local_mass = options.local_mass;
         end
 
-        function initialize(obj, u0_hat, t_grid)        
+        function initialize(obj, u0_hat, t_grid)    
+            
+            if obj.subtract_mass
+                u0_hat(1) = 0;
+            end
+            
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
@@ -61,10 +71,16 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
             obj.hLine1 = plot(obj.ax1, obj.x, u0, 'LineWidth', 1.5);
             
             % Set limits depending on the value of mu at the last time.
-            ylim(obj.ax1, 1.2 * [-sqrt(obj.mu(t_grid(end))) sqrt(obj.mu(t_grid(end)))]);
+            %ylim(obj.ax1, 1.2 * [-sqrt(obj.mu(t_grid(end))) sqrt(obj.mu(t_grid(end)))]);
+            mu_val = max(0, obj.mu(t_grid(end)));
+            try
+                ylim(obj.ax1, 1.2 * [-sqrt(mu_val) sqrt(mu_val)]);
+            catch
+                ylim(obj.ax1, 1.2 * [-1 1]);
+            end
             
             xlabel(obj.ax1, 'x'); 
-            ylabel(obj.ax1, 'u');
+            ylabel(obj.ax1, 'u - m');
             obj.hTitle1 = title(obj.ax1, sprintf('t = %.3f', t_grid(1)));
             grid(obj.ax1, 'on');
 
@@ -72,7 +88,7 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
             obj.ax2 = subplot(2,3,4);
             obj.l2_line = semilogy(obj.ax2, 0, NaN, 'LineWidth', 2);
             xlabel(obj.ax2, '\mu'); 
-            ylabel(obj.ax2, '||u(\mu, \cdot)||_{L^2}');
+            ylabel(obj.ax2, '||u(\mu, \cdot) - m||_{L^2}');
             title(obj.ax2, 'L2 Norm of u');
             grid(obj.ax2, 'on');
 
@@ -95,11 +111,21 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
             for k = 1:5
                 obj.amp_plots(k) = semilogy(obj.ax4, NaN, NaN, 'LineWidth', 2);
             end
+
+            obj.crit_lines = gobjects(1,20);
+            for k = 1:20
+                mu_k_c = 3*obj.local_mass^2 + (pi*k/obj.Lx)^2;
+                obj.crit_lines(k) = xline(obj.ax4, mu_k_c, ':', sprintf('\\mu_{%d}^c', k), ...
+                    'LineWidth', 1.5, 'Color', [0.5 0.5 0.5], ...
+                    'LabelVerticalAlignment','middle', ...
+                    'Visible','off', 'HandleVisibility','off');
+                    
+            end
             
             labels = arrayfun(@(k) sprintf('u_%d', k), 1:5, 'UniformOutput', false);
             legend(obj.ax4, obj.amp_plots, labels, 'Location', 'southwest', 'Interpreter', 'tex');
             xlabel(obj.ax4, '\mu'); 
-            ylabel(obj.ax4, '|u_k|');
+            ylabel(obj.ax4, '$|u_k - m|$', 'Interpreter', 'latex');
             title(obj.ax4, 'Amplitude over \mu');
             grid(obj.ax4, 'on');
             set(obj.ax4, 'YScale', 'log');
@@ -116,6 +142,11 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
         end
 
         function update(obj, u_hat, t)
+
+            if obj.subtract_mass
+                u_hat(1) = 0;
+            end
+            
             update@BifurcationMonitorHeadless(obj, u_hat, t);
 
             u = real(ifft(u_hat));
@@ -137,6 +168,17 @@ classdef BifurcationMonitorInMuFiveModeHistory < BifurcationMonitorHeadless
                         'XData', obj.mu_grid(1:obj.step_idx), ...
                         'YData', obj.amp_history(k, 1:obj.step_idx));
                 end
+                
+                for k = 1:numel(obj.crit_lines)
+                    mu_k_c = 3*obj.local_mass^2 + (pi*k/obj.Lx)^2;
+
+                    if obj.mu(t) >= mu_k_c
+                        obj.crit_lines(k).Visible = 'on';
+                    else
+                        obj.crit_lines(k).Visible = 'off';
+                    end
+                end
+
                 axis(obj.ax4, 'tight');
 
                 drawnow;

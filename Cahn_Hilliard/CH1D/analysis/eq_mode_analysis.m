@@ -22,8 +22,8 @@ type = 4;
 %% Parameters
 % heat map params
 num_runs = 20;
-xscale = 8;
-IC_modes = 0:xscale+4;
+L = 8;
+IC_modes = 0:L+4;
 
 epsilon = 0.1; % type == 0 or 1
 epsilon_exp = -1.*linspace(1, 6, 20);
@@ -39,7 +39,7 @@ mu = @(t) epsilon * t;
 
 mass = 0;
 
-Lx = xscale*pi;
+Lx = L*pi;
 Nx = 2^10;
 dx = 2*Lx/Nx;
 
@@ -544,7 +544,7 @@ switch type
                        epsilon_list(1), epsilon_list(end)))
         ylabel('Eq. mode number')
         title(sprintf('Equilibrium mode likelihood — random ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi', ...
-                      sigma, mu_final, num_runs, xscale))
+                      sigma, mu_final, num_runs, L))
 
         % Sparse x-tick labels showing actual epsilon values
         tick_step = max(1, floor(num_eps/10));
@@ -681,7 +681,7 @@ switch type
                        epsilon_list(1), epsilon_list(end)))
         ylabel('Eq. mode number')
         title(sprintf('Equilibrium mode likelihood — random F.ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi,   prob=%.2f', ...
-                      sigma, mu_final, num_runs, xscale, activation_prob))
+                      sigma, mu_final, num_runs, L, activation_prob))
 
         % Sparse x-tick labels showing actual epsilon values
         tick_step = max(1, floor(num_eps/10));
@@ -818,7 +818,7 @@ switch type
                        epsilon_list(1), epsilon_list(end)))
         ylabel('Eq. mode number')
         title(sprintf('Equilibrium mode likelihood — random F.ICs\n\\sigma=%.3f   \\mu_{final}=%.2f   runs/\\epsilon=%d,   length=%d*2\\pi,   prob=%.2f', ...
-                      sigma, mu_final, num_runs, xscale, activation_prob))
+                      sigma, mu_final, num_runs, L, activation_prob))
 
         % Sparse x-tick labels showing actual epsilon values
         tick_step = max(1, floor(num_eps/10));
@@ -857,7 +857,7 @@ switch type
 
         % parameters you may want to tun
         epsilon_6   = epsilon;          % uses the epsilon defined at top of script
-        IC_modes_6  = 1:xscale;        % single-mode ICs to sweep (skip 0 — trivial)
+        IC_modes_6  = 1:L;        % single-mode ICs to sweep (skip 0 — trivial)
         num_runs_6  = num_runs;         % runs per IC (for noise robustness; IC is deterministic
                                         % so >1 run only matters if you add noise — set 1 for speed)
         record_every = 5;              % record dominant mode every N time steps (keeps video manageable)
@@ -982,8 +982,8 @@ switch type
 
             mu_now = mu_6(t_rec(ri));
             k_star = sqrt(max(mu_now/2, 0));   % preferred mode k*(t) in physical wavenumber units
-            % Convert to mode index: k_hat = n/N => n = k_hat * N = k* * xscale
-            n_star = k_star * xscale;
+            % Convert to mode index: k_hat = n/N => n = k_hat * N = k* * L
+            n_star = k_star * L;
 
             title(sprintf('Dominant mode evolution  |  \\epsilon=%.4f  |  t=%.2f  |  \\mu=%.3f  |  k^*(t)=%.2f', ...
                           epsilon_6, t_rec(ri), mu_now, n_star), 'FontSize', 11)
@@ -995,7 +995,7 @@ switch type
                   'LabelHorizontalAlignment', 'right')
 
             % Mark the theoretical boundary n* = N*sqrt(mu_final/2)
-            n_boundary = xscale * sqrt(mu_final/2);
+            n_boundary = L * sqrt(mu_final/2);
             yline(n_boundary, '--', 'Color', [0.8 0.5 0], 'LineWidth', 1.5, ...
                   'Label', 'n^* boundary', 'LabelVerticalAlignment', 'top', ...
                   'LabelHorizontalAlignment', 'right')
@@ -1016,17 +1016,17 @@ switch type
         % -----------------------------------------------------------------
 
         % Theoretical activation time: t_k = 2*k_hat^2 / epsilon
-        % where k_hat = k / xscale (since Lx = xscale*pi, khat = k/xscale)
-        k_hat_vec   = IC_modes_6 / xscale;
+        % where k_hat = k / L (since Lx = L*pi, khat = k/L)
+        k_hat_vec   = IC_modes_6 / L;
         t_k_theory  = 2 * k_hat_vec.^2 / epsilon_6;  % from integrated eigenvalue zero-crossing
 
         % k*(t) at t_eq: the preferred mode index at the moment each IC reaches equilibrium
-        % k_star_at_teq(ic) = xscale * sqrt( mu_6(t_eq_6(ic)) / 2 )  [as mode index n]
-        k_star_at_teq = xscale * sqrt(max(mu_6(t_eq_6), 0) / 2);
+        % k_star_at_teq(ic) = L * sqrt( mu_6(t_eq_6(ic)) / 2 )  [as mode index n]
+        k_star_at_teq = L * sqrt(max(mu_6(t_eq_6), 0) / 2);
 
         % Dense curve for k*(t) overlay
         t_dense   = linspace(max(t0, 0), T_6, 500);
-        n_star_curve = xscale * sqrt(mu_6(t_dense) / 2);
+        n_star_curve = L * sqrt(mu_6(t_dense) / 2);
 
         fig6b = figure('Position', [100 100 1100 500]);
 
@@ -1037,7 +1037,7 @@ switch type
         plot(IC_modes_6, t_k_theory, 'r--', 'LineWidth', 2, 'DisplayName', 't_k = 2\hat{k}^2/\epsilon')
 
         % Mark the n* boundary
-        n_boundary = xscale * sqrt(mu_final/2);
+        n_boundary = L * sqrt(mu_final/2);
         xline(n_boundary, '--', 'Color', [0.8 0.5 0], 'LineWidth', 1.5, ...
               'Label', 'n^*', 'LabelVerticalAlignment', 'bottom')
         hold off
@@ -1047,7 +1047,7 @@ switch type
         xlabel('IC mode k_0', 'FontSize', 12)
         ylabel('t_{eq}', 'FontSize', 12)
         title(sprintf('Equilibrium time vs IC mode\n\\epsilon=%.4f,  \\mu_{final}=%.2f,  L=%d\\pi', ...
-                      epsilon_6, mu_final, xscale), 'FontSize', 11)
+                      epsilon_6, mu_final, L), 'FontSize', 11)
         legend('Location', 'northwest', 'FontSize', 9)
         grid on
 
@@ -1083,7 +1083,7 @@ switch type
         grid on
 
         sgtitle(sprintf('Case 6 — \\epsilon=%.4f,  N=%d,  \\mu_{final}=%.2f', ...
-                        epsilon_6, xscale, mu_final), 'FontSize', 13)
+                        epsilon_6, L, mu_final), 'FontSize', 13)
 
         saveas(fig6b, 'case6_teq_comparison.png')
         fprintf('Plot saved: case6_teq_comparison.png\n');

@@ -48,8 +48,8 @@ const mu_final      = 2.0
 const dt_float      = 0.1
 const MASS          = 0.0
 
-const xscale        = 10
-const lx_float      = xscale * pi    # half-domain size
+const L        = 10
+const lx_float      = L * pi    # half-domain size
 const NX            = 2^10
 
 # Threshold for equilibrium detection: relative change in dominant mode is below this
@@ -501,7 +501,7 @@ function run_simulation()
             xlabel       = "IC mode number",
             ylabel       = "Eq. mode number",
             title = "Equilibrium Mode Likelihood for Single-Mode ICs\n" *
-                    "\$\\mu_{\\rm final}=$mu_final,\\;\\epsilon=$epsilon,\\;L=$(xscale)\\times2\\pi\$",
+                    "\$\\mu_{\\rm final}=$mu_final,\\;\\epsilon=$epsilon,\\;L=$(L)\\times2\\pi\$",
             colorbar     = true,
             aspect_ratio = :equal,
             grid         = true,
@@ -566,7 +566,7 @@ function run_simulation()
                 xlabel       = "IC mode number",
                 ylabel       = "Eq. mode number",
                 title = "Equilibrium Mode Likelihood for Single-Mode ICs\n" *
-                        "\$\\mu_{\\rm final}=$(round(mu_final,digits=2)),\\;L=$(xscale)\\times2\\pi\$",
+                        "\$\\mu_{\\rm final}=$(round(mu_final,digits=2)),\\;L=$(L)\\times2\\pi\$",
                 colorbar     = true,
                 aspect_ratio = :equal,
                 grid         = true,
@@ -629,7 +629,7 @@ function run_simulation()
                 round(epsilon_list[1], digits=3), ",", round(epsilon_list[end], digits=2),"])"),
             ylabel   = "Eq. mode number",
             title = "Equilibrium Mode Likelihood for Random ICs\n" *
-                    "\$\\mu_{\\rm final}=$(round(mu_final,digits=2)),\\;L=$(xscale)\\times2\\pi\$",
+                    "\$\\mu_{\\rm final}=$(round(mu_final,digits=2)),\\;L=$(L)\\times2\\pi\$",
             colorbar = true,
             grid     = true,
             size     = (900, 550),

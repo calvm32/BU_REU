@@ -9,7 +9,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         Nx (1, 1) double
         t_grid (1, :) double
         mu_grid (1, :) double
-
+        subtract_mass (1, 1) logical
 
         % Tracking arrays
         l2_history double
@@ -22,8 +22,14 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
     end
 
     methods
-        function obj = BifurcationMonitorHeadless(mu, kx, Lx, Nx)
-            % Code assumes mu is a function of time
+        function obj = BifurcationMonitorHeadless(mu, kx, Lx, Nx, options)
+            arguments
+                mu
+                kx (1, :) double
+                Lx (1, 1) double
+                Nx (1, 1) double
+                options.subtract_mass (1, 1) logical = false
+            end
             if isnumeric(mu)
                 obj.mu = @(t) mu * ones(size(t));
             else
@@ -32,11 +38,16 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.kx = kx;
             obj.Lx = Lx;
             obj.Nx = Nx;
+            obj.subtract_mass = options.subtract_mass;
         end
 
         function initialize(obj, u0_hat, t_grid)
-            % NOTE: CHANGE THIS FOR MASS SUBTRACTION
-            obj.mass = u0_hat(1);
+            
+            if obj.subtract_mass
+                u0_hat(1) = 0;
+            end
+
+            obj.mass = u0_hat(1) / obj.Nx;
             num_steps = length(t_grid);
             obj.t_grid = t_grid;
             obj.mu_grid = obj.mu(t_grid);
@@ -55,9 +66,12 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         end
 
         function update(obj, u_hat, t)
-            obj.step_idx = obj.step_idx + 1;
             
-            u = real(ifft(u_hat));
+            if obj.subtract_mass
+                u_hat(1) = 0;
+            end
+
+            obj.step_idx = obj.step_idx + 1;
 
             % L2 computation
             obj.l2_history(obj.step_idx) = sqrt(obj.Lx) * norm(u_hat) / length(u_hat);
@@ -66,7 +80,9 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.amp_history(:, obj.step_idx) = abs(u_hat(2:6) / obj.Nx); % TODO: Update so that 5 is a parameter
 
             % Dominate mode computation (excludes the mean mode)
-            [~, max_index] = max(abs(u_hat - obj.mass));
+            u_hat_ac = u_hat;
+            u_hat_ac(1) = 0;
+            [~, max_index] = max(abs(u_hat_ac));
             dom_mode = obj.kx(max_index);
 
             if obj.dom_mode_ind == 0 || obj.dominate_mode(obj.dom_mode_ind, 2) ~= dom_mode

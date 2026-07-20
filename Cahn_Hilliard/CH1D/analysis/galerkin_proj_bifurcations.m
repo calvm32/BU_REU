@@ -26,7 +26,7 @@ N = 2^7;
 m1 = 0;
 
 % choose max subcritical, get n
-n_subc = 2; % 1,...,n modes = subcritical, n+1,... modes = supercritical
+n_subc = 5; % 1,...,n modes = subcritical, n+1,... modes = supercritical
 m2 = (2*n_subc+1)*sqrt(2)/20; 
 
 n_check = 2;

@@ -19,8 +19,8 @@ dt = 0.1;
 
 mass = 0;
 
-xscale = 6;
-Lx = xscale*pi;
+L = 6;
+Lx = L*pi;
 Nx = 2^12;
 
 [mu4, ~] = critical_bifurcation(4, 2 * Lx, mass);

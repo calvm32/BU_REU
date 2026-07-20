@@ -41,9 +41,10 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
                 options.video_filename string = "bifurcation_movie.avi"
                 options.video_framerate (1, 1) double = 30
                 options.start_time (1, 1) double = 0
+                options.subtract_mass logical = false
             end
 
-            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx);
+            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx, 'subtract_mass', options.subtract_mass);
             obj.x = x;
             obj.k_j = k_j;
             obj.plot_every = options.plot_every;
@@ -54,20 +55,25 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
         end
 
         function initialize(obj, u0_hat, t_grid)
+            
+            if obj.subtract_mass
+                u0_hat(1) = 0;
+            end
+            
+            u0 = real(ifft(u0_hat));
 
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
             % Subplot 1: Solution (Spans the entire top row)
             obj.ax1 = subplot(2,3,[1 2 3]);
-            u0 = real(ifft(u0_hat));
             obj.hLine1 = plot(obj.ax1, obj.x, u0, 'LineWidth', 1.5);
             
             % Set limits depending on the value of mu at the last time.
             ylim(obj.ax1, 1.2 * [-sqrt(obj.mu(t_grid(end))) sqrt(obj.mu(t_grid(end)))]);
             
             xlabel(obj.ax1, 'x'); 
-            ylabel(obj.ax1, 'u');
+            ylabel(obj.ax1, 'u - m');
             obj.hTitle1 = title(obj.ax1, sprintf('t = %.3f', t_grid(1)));
             grid(obj.ax1, 'on');
 
@@ -75,7 +81,7 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
             obj.ax2 = subplot(2,3,4);
             obj.l2_line = semilogy(obj.ax2, NaN, NaN, 'LineWidth', 2); 
             xlabel(obj.ax2, 't'); 
-            ylabel(obj.ax2, '||u||_{L^2}');
+            ylabel(obj.ax2, '||u - m||_{L^2}');
             title(obj.ax2, 'L2 Norm of u');
             grid(obj.ax2, 'on');
 
@@ -94,13 +100,14 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
 
             % Subplot 4: Fourier Spectrum (semilogy: handles zeros cleanly)
             obj.ax4 = subplot(2,3,6);
-            obj.hFreq = semilogy(obj.ax4, ifftshift(obj.kx), ifftshift(abs(u0_hat)), 'LineWidth', 2);
+            obj.hFreq = semilogy(obj.ax4, ifftshift(obj.kx), ifftshift(abs(u0_hat)), '-o', 'LineWidth', 0.8, 'MarkerSize', 3);
             xlabel(obj.ax4, 'k'); 
-            ylabel(obj.ax4, '$|\hat{u}|$', 'Interpreter', 'latex');
+            ylabel(obj.ax4, '$|u_k - m|$', 'Interpreter', 'latex');
             xlim(obj.ax4, [-obj.kx(32), obj.kx(32)]);
             ylim(obj.ax4, [1e-25, 1e5]);
             grid(obj.ax4, 'on');
             set(obj.ax4, 'YScale', 'log');
+            axis(obj.ax4, 'tight');
 
             % Video setup
             if obj.save_video
@@ -114,12 +121,20 @@ classdef BifurcationMonitor < BifurcationMonitorHeadless
         end
 
         function update(obj, u_hat, t)
+
+            if obj.subtract_mass
+                u_hat(1) = 0;
+            end
+            
             update@BifurcationMonitorHeadless(obj, u_hat, t);
 
             u = real(ifft(u_hat));
 
             % Update plots
             if (mod(obj.step_idx - 1, obj.plot_every) == 0) % && (t > obj.start_time)
+
+                axis(obj.ax4, 'tight');
+
                 obj.hLine1.YData = u;
                 obj.hTitle1.String = sprintf('t = %.4f', t);
 

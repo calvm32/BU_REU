@@ -12,33 +12,32 @@ clc; clear; close all;
 
 %% Parameters
 t0 = 0;
-T  = 8000;
-dt = 0.5;
+dt = 0.01;
 max_mode_num = 12;
 L = 10;
 
 start_time = 0;
 
-% choose max subcritical, get n
-n_subc = 2; % 1,...,n modes = subcritical, n+1,... modes = supercritical
+% max. subcritical mode
+n_subc = 3; % 1,...,n modes = subcritical, n+1,... modes = supercritical
 mass = (2*n_subc+1)*sqrt(2)/20; 
 
-n_check = 2;
-mu_n = 3*mass^2 + (n_check/L)^2;
-mu_next = 3*mass^2 + ((n_check + 1)/L)^2;
+% max. mode whose eigenvalue is > 0
+n_mu = 2;
+mu_n = 3*mass^2 + (n_mu/L)^2;
+mu_next = 3*mass^2 + ((n_mu + 1)/L)^2;
 mu = (mu_n + mu_next)/2;
 
-k_hat = @(k) (k^2)/(L^2);
-lambda_k = @(k) k_hat(k) * ( -k_hat(k) + mu - k_hat(k)*mass^2 );
-disp(lambda_k(1))
+k_hat_sq = @(k) (k^2)/(L^2);
+lambda_k = @(k) k_hat_sq(k) * ( -k_hat_sq(k) + mu - mass^2 );
 
 disp(sprintf('using mass = %.2f', mass))
-disp(sprintf('using m    = %.2f', mu))
+disp(sprintf('using mu   = %.2f', mu))
 
 Lx = L*pi;
-Nx = 2^12;
+Nx = 2^10;
 
-plot_dt = 12.0; 
+plot_dt = 5.0; 
 plot_every = round(plot_dt / dt);
 save_video = true;
 
@@ -61,9 +60,13 @@ kx_max = max(abs(kx));
 dealias_mask = abs(kx) <= (2/3)*kx_max;
 
 %% Loop over all k_i
-for m = 1:length(k_i)
+for m = 2:2
     k = k_i(m);
+
+    T = 2.5/lambda_k(k);
+
     fprintf('Running k  = %.4f\n', k);
+    fprintf('lambda(k)  = %.4f\n', lambda_k(k));
     fprintf('transcritical value  = %.4f\n', lambda_k(k)/mass);
 
     % Zero mean white noise
@@ -71,14 +74,11 @@ for m = 1:length(k_i)
     % noise = noise - mean(noise);
     
     % Start at k_bif
-    u0 = 0.01*cos(0 * x) + mass;
-    u0_hat = 10^(-5)*ones(1,Nx)*Nx; %fft(u0);
-
-    u0_hat(1) = mass*Nx;
+    u0 = 0.01*cos(k * x) + mass;
+    u0_hat = fft(u0);
 
     % Define problem
     nonlin_op = @(u_hat, t) dealias_mask .* Laplacian_hat .* fft( real(ifft(u_hat)).^3 - mu*real(ifft(u_hat)) );
-
     problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
 
     % Solver
@@ -88,11 +88,17 @@ for m = 1:length(k_i)
         plot_every=plot_every, ...
         save_video=save_video, ...
         video_filename=sprintf('k=%.3f_T=%.0f.avi', k, T), ...
-        video_framerate=60);
+        video_framerate=60, ...
+        subtract_mass=true);
 
     % Execute
-    sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
-    disp(['Integration complete for k = ', num2str(k)]);
+    try   
+        sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
+        disp(['Integration complete for k = ', num2str(k)]);
+    catch ME
+        warning('Run for k = %.3f stopped: %s', k, ME.message);
+        continue    % move on to the next k
+    end
 end
 
 function [mu_j, k_j] = critical_bifurcation(j, L, mass)
