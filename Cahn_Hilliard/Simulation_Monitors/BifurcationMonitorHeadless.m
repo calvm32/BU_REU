@@ -9,6 +9,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         Nx (1, 1) double
         t_grid (1, :) double
         mu_grid (1, :) double
+        num_amplitudes double
 
 
         % Tracking arrays
@@ -21,7 +22,14 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
     end
 
     methods
-        function obj = BifurcationMonitorHeadless(mu, kx, Lx, Nx)
+        function obj = BifurcationMonitorHeadless(mu, kx, Lx, Nx, num_amplitudes)
+            arguments
+                mu
+                kx (1, :) double
+                Lx (1, 1) double
+                Nx (1, 1) double
+                num_amplitudes double = 5
+            end
             % Code assumes mu is a function of time
             if isnumeric(mu)
                 obj.mu = @(t) mu * ones(size(t));
@@ -31,6 +39,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.kx = kx;
             obj.Lx = Lx;
             obj.Nx = Nx;
+            obj.num_amplitudes = num_amplitudes;
         end
 
         function initialize(obj, u0_hat, t_grid)
@@ -46,7 +55,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.dom_mode_ind = 1;
 
             obj.l2_history = zeros(1, num_steps);
-            obj.amp_history = zeros(5, num_steps); % TODO: Add 5 to parameters
+            obj.amp_history = zeros(obj.num_amplitudes, num_steps); % TODO: Add 5 to parameters
 
             obj.update(u0_hat, t_grid(1));
         end
@@ -60,7 +69,7 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.l2_history(obj.step_idx) = sqrt(obj.Lx) * norm(u_hat) / length(u_hat);
 
             % Amplitude history saving
-            obj.amp_history(:, obj.step_idx) = abs(u_hat(2:6) / obj.Nx); % TODO: Update so that 5 is a parameter
+            obj.amp_history(:, obj.step_idx) = abs(u_hat(2:obj.num_amplitudes+1) / obj.Nx); % TODO: Update so that 5 is a parameter
 
             % Dominate mode computation (excludes the mean mode)
             [~, max_index] = max(abs(u_hat - mean(u)));

@@ -11,7 +11,7 @@ clear all; close all;
 % ------------------------------------------------------------------------------------------
 
 % range of epsilons
-EP = 1.15*10.^[-5]; %10.^[-4.5:1:-4];
+EP = 0.9*10.^[-3]; %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -23,11 +23,11 @@ save_each_run = false;
 %% Parameters
 dt = 0.02; 
 mass = 0;
-mu0 = -0.2;
-muf = 2.0;
-xscale = 10;
+mu0 = -0.1;
+muf = 1.1;
+xscale = 50;
 Lx = xscale*pi;
-Nx = 2^10;
+Nx = 2^12;
 
 % spatial grid
 dx = 2*Lx/Nx;
@@ -50,7 +50,7 @@ kx_max = max(abs(kx));
 dealias_mask = abs(kx) <= (2/3)*kx_max;
 
 %% Find k_j's for initial data
-k_j = pi * [0:10] / Lx;
+k_j = pi * [0:25] / Lx;
 k = k_j(10);
 
 [MUS,KS] = critical_bifurcation([1:10], 2 * Lx, mass, mu0);
@@ -74,10 +74,12 @@ display(MUS)
 
 
 % %all modes on
-uh0 = ones(size(x));
-u0 = ifft(uh0);
-u0 = u0 - mean(u0);
+u0 = 0.01*cos((4/50)*x) + 0.01*cos((5/50)*x);
 u_hat0 = fft(u0);
+% uh0 = ones(size(x));
+% u0 = ifft(uh0);
+% u0 = u0 - mean(u0);
+% u_hat0 = fft(u0);
 
 
 %%%%% For loop over range of epsilons
@@ -109,10 +111,10 @@ for ii = 1:length(EP)
     % monitor = BifurcationMonitorHeadless(mu, kx, Lx, Nx);
     % Use BifurcationMonitorInMu if you do:
     % monitor = BifurcationMonitorInMu(mu, kx, Lx, Nx, x, k_j, plot_every=plot_every, save_video=save_video, video_filename=sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0), video_framerate=30);
-    monitor = BifurcationMonitorInMuFiveModeHistory(mu, kx, Lx, Nx, x, k_j, ...
+    monitor = BifurcationMonitorInMuModeHistory(mu, kx, Lx, Nx, x, k_j, 5, ...
         plot_every=plot_every, ...
         save_video=save_video, ...
-        video_filename=sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0), ...
+        video_filename=sprintf('ep=1e%.4f_mu0=%.2f.avi', log10(ep), mu0), ...
         video_framerate=30);
 
     % Execute

@@ -78,7 +78,7 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
             obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
-            labels = cellstr("k_" + (0:numel(obj.k_j)-1));
+            labels = cellstr("k_{" + (0:numel(obj.k_j)-1)+"}");
             yline(obj.ax3, obj.k_j, '--r', labels, 'LineWidth', 2);    
             xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
@@ -91,7 +91,7 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             obj.hFreq = semilogy(obj.ax4, ifftshift(obj.kx), ifftshift(abs(u0_hat)), 'LineWidth', 2);
             xlabel(obj.ax4, 'k'); 
             ylabel(obj.ax4, '$|\widehat{u(\mu)}|$', 'Interpreter', 'latex');
-            xlim(obj.ax4, [-obj.kx(32), obj.kx(32)]);
+            xlim(obj.ax4, [-obj.kx(64), obj.kx(64)]);
             ylim(obj.ax4, [1e-25, 1e5]);
             grid(obj.ax4, 'on');
             set(obj.ax4, 'YScale', 'log');
