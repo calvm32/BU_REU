@@ -39,9 +39,10 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
                 options.save_video (1, 1) logical = false
                 options.video_filename string = "bifurcation_movie.avi"
                 options.video_framerate (1, 1) double = 30
+                options.subtract_mass logical = false
             end
 
-            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx);
+            obj = obj@BifurcationMonitorHeadless(mu, kx, Lx, Nx, 'subtract_mass', options.subtract_mass);
             obj.x = x;
             obj.k_j = k_j;
             obj.plot_every = options.plot_every;
@@ -51,6 +52,11 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
         end
 
         function initialize(obj, u0_hat, t_grid)
+            
+            if obj.subtract_mass
+                u0_hat(1) = 0;
+            end
+
             % Plot setup
             obj.fig = figure('Position',[100 100 1200 700], 'Resize', 'off');
 
@@ -63,7 +69,7 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             ylim(obj.ax1, 1.2 * [-sqrt(obj.mu(t_grid(end))) sqrt(obj.mu(t_grid(end)))]);
             
             xlabel(obj.ax1, 'x'); 
-            ylabel(obj.ax1, 'u');
+            ylabel(obj.ax1, 'u - m');
             obj.hTitle1 = title(obj.ax1, sprintf('t = %.3f', t_grid(1)));
             grid(obj.ax1, 'on');
 
@@ -71,18 +77,27 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             obj.ax2 = subplot(2,3,4);
             obj.l2_line = semilogy(obj.ax2, 0, NaN, 'LineWidth', 2);
             xlabel(obj.ax2, '\mu'); 
-            ylabel(obj.ax2, '||u(\mu, \cdot)||_{L^2}');
+            ylabel(obj.ax2, '||u(\mu, \cdot) - m||_{L^2}');
             title(obj.ax2, 'L2 Norm of u');
             grid(obj.ax2, 'on');
 
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
             obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
-            labels = cellstr("k_{" + (0:numel(obj.k_j)-1)+"}");
+            labels = cellstr("k_{" + (0:numel(obj.k_j)-1) + "}");
             yline(obj.ax3, obj.k_j, '--r', labels, 'LineWidth', 2);    
             xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
-            xlim(obj.ax3, obj.mu(t_grid([1, end])));
+            %xlim(obj.ax3, obj.mu(t_grid([1, end])));
+            mu_limits = obj.mu(t_grid([1, end]));
+
+            if mu_limits(1) == mu_limits(2)
+                % Constant mu: give a small symmetric padding
+                pad = max(1e-6, 0.05 * max(abs(mu_limits(1)), 1));
+                mu_limits = mu_limits + [-pad, pad];
+            end
+
+            xlim(obj.ax3, mu_limits);
             ylim(obj.ax3, [0, obj.k_j(end)]); 
             grid(obj.ax3, 'on');
 
@@ -90,8 +105,8 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
             obj.ax4 = subplot(2,3,6);
             obj.hFreq = semilogy(obj.ax4, ifftshift(obj.kx), ifftshift(abs(u0_hat)), 'LineWidth', 2);
             xlabel(obj.ax4, 'k'); 
-            ylabel(obj.ax4, '$|\widehat{u(\mu)}|$', 'Interpreter', 'latex');
-            xlim(obj.ax4, [-obj.kx(64), obj.kx(64)]);
+            ylabel(obj.ax4, '$|u_k - m|$', 'Interpreter', 'latex');
+            xlim(obj.ax4, [-obj.kx(32), obj.kx(32)]);
             ylim(obj.ax4, [1e-25, 1e5]);
             grid(obj.ax4, 'on');
             set(obj.ax4, 'YScale', 'log');
@@ -103,11 +118,18 @@ classdef BifurcationMonitorInMu < BifurcationMonitorHeadless
                 obj.v.Quality = 100;
                 open(obj.v);
             end
+
+            obj.update(u0_hat, t_grid(1));
             
             initialize@BifurcationMonitorHeadless(obj, u0_hat, t_grid);
         end
 
         function update(obj, u_hat, t)
+
+            if obj.subtract_mass
+                u_hat(1) = 0;
+            end
+            
             update@BifurcationMonitorHeadless(obj, u_hat, t);
 
             u = real(ifft(u_hat));

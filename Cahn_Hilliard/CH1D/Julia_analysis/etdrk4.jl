@@ -1,5 +1,5 @@
 import Pkg
-Pkg.add(["MultiFloats", "GenericFFT", "Plots", "FFMPEG",  "AbstractFFTs"])
+# Pkg.add(["MultiFloats", "GenericFFT", "Plots", "FFMPEG", "AbstractFFTs"])
 
 using MultiFloats
 using GenericFFT
@@ -8,6 +8,10 @@ using LinearAlgebra
 using Plots
 
 MultiFloats.use_bigfloat_transcendentals()
+
+# PRECISION CONTROL
+# Float64, Float64x2, Float64x4, etc.
+const T_type = Float64x2
 
 """
 Computes the critical bifurcation parameters for a given mode j.
@@ -18,13 +22,12 @@ function critical_bifurcation(j, L, mass, ::Type{T}) where {T}
     return mu_j, k_j
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------
 # Allocation-free helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------
 
 """
-Zero-allocation argmax of |x|² over a complex vector, skipping the first
-element (DC / k=0 component).
+Zero-allocation argmax of |x|^2 over a complex vector, skipping k=0
 """
 function argmax_abs2_skip1(arr::AbstractVector{<:Complex})
     max_val = abs2(arr[2])
@@ -62,7 +65,6 @@ function ifft_to_real!(dst::Vector{T}, src::Vector{Complex{T}}, scratch::Vector{
     end
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
 
 """
 Computes the ETDRK4 integration coefficients using a complex contour integral.
@@ -95,7 +97,7 @@ function compute_etdrk4_coefficients(L_operator, dt_float::Float64, ::Type{T}) w
         sum_f2 = zero(Complex{T})
         sum_f3 = zero(Complex{T})
         
-        for k in 1:M            # scalar iteration avoids allocating z .+ r
+        for k in 1:M
             lr = z + r[k]
             exp_lr_2 = exp(lr / 2)
             exp_lr   = exp(lr)
@@ -167,12 +169,9 @@ function solve_etdrk4!(
     u_hist = zeros(Float64, Nx, num_frames)
     u_hat_hist = zeros(Float64, Nx, num_frames)
     
-    # Initial FFT of u (one-time allocation for persistent state)
     fft_real!(fft_scratch, u)
     u_hat = copy(fft_scratch)
     
-    # Seed dominant mode tracking using u_hat directly, skipping DC.
-    # fft(u - mass) differs from u_hat only at k=0, and we exclude k=0.
     max_index = argmax_abs2_skip1(u_hat)
     
     dominate_mode_t = Float64[max(1e-2, t_vec[1])]
@@ -182,33 +181,28 @@ function solve_etdrk4!(
     @. u_hat_hist[:, 1] = Float64(abs(u_hat))
 
     for n in 2:num_time_steps
-        
-        # ETDRK4 stages (allocation-free)
-        
         # Stage 1
         compute_nonlinear_forcing_hat!(Nu_hat, u, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
-        # Stage 2 (Predictor step 'a')
+        # Stage 2
         @. a_hat = E2 * u_hat + Q * Nu_hat
         ifft_to_real!(a, a_hat, ifft_scratch)
         compute_nonlinear_forcing_hat!(Na_hat, a, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
-        # Stage 3 (Predictor step 'b')
+        # Stage 3 
         @. b_hat = E2 * u_hat + Q * Na_hat
         ifft_to_real!(b, b_hat, ifft_scratch)
         compute_nonlinear_forcing_hat!(Nb_hat, b, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
-        # Stage 4 (Predictor step 'c')
+        # Stage 4
         @. c_hat = E2 * a_hat + Q * (2 * Nb_hat - Nu_hat)
         ifft_to_real!(c, c_hat, ifft_scratch)
         compute_nonlinear_forcing_hat!(Nc_hat, c, mu, Laplacian_k, dealias_mask, u3_scratch, fft_scratch)
         
-        # Final Correction Step
+        # Final Correction
         @. u_hat = E * u_hat + f1 * Nu_hat + 2 * f2 * (Na_hat + Nb_hat) + f3 * Nc_hat
         ifft_to_real!(u, u_hat, ifft_scratch)
         
-        # Physics Tracking (allocation-free)
-        # Use u_hat directly: fft(u-mass) = u_hat with modified DC, which we skip.
         max_index = argmax_abs2_skip1(u_hat)
         dom_mode  = abs(Float64(kx[max_index]))
 
@@ -217,11 +211,14 @@ function solve_etdrk4!(
             push!(dominate_mode_k, dom_mode)
         end
 
-        # Capture Lightweight Frames for Visualization
         if (n - 1) % plot_every == 0
             frame_idx = (n - 1) ÷ plot_every + 1
             @. u_hist[:, frame_idx] = Float64(u)
             @. u_hat_hist[:, frame_idx] = Float64(abs(u_hat))
+        end
+
+        if (n - 1) % 100 == 0
+            println("Done w/ $(n-1)/$num_time_steps time steps")
         end
     end
     
@@ -229,38 +226,38 @@ function solve_etdrk4!(
 end
 
 function run_simulation()
-    T_type = Float64
     println("Initializing execution parameters with type: ", T_type)
     
     t0_float = 0.0
-    T_end_float = 160.0
     dt_float = 0.1
-    mass = T_type(0.0)
-    xscale = 6
-    Lx = T_type(xscale) * T_type(pi)
+    L = 10
+    Lx = T_type(L) * T_type(pi)
     Nx = 4096
+    max_mode_num = 12
+
+    n_subc = 8 
+    n_mu = 2 
+
+    mass = (2*n_subc+1)*sqrt(2)/20
     
-    # Setup Bifurcation space
-    mu, _ = critical_bifurcation(5, 2 * Lx, mass, T_type)
+    mu_n = 3*mass^2 + (n_mu/L)^2
+    mu_next = 3*mass^2 + ((n_mu + 1)/L)^2
+    mu = (mu_n + mu_next)/2
+
     mu_float = Float64(mu)
-    
-    plot_dt = 2.0
+    mass_float = Float64(mass)
+
+    plot_dt = 30.0
     plot_every = round(Int, plot_dt / dt_float)
     
-    k_j_exact = T_type(pi) .* (0:7) ./ Lx
-    k_i = k_j_exact[2] 
-    k_j = [Float64(val) for val in k_j_exact] # Clean list comprehension conversion
+    # Generating full range of wavenumbers up to max_mode_num+1 to match MATLAB
+    k_j_exact = T_type(pi) .* (0:(max_mode_num+1)) ./ Lx
+    k_i = k_j_exact[2:end] # Slice correctly instead of returning a scalar
+    k_j = [Float64(val) for val in k_j_exact] 
 
     dx = T_type(2) * Lx / T_type(Nx)
-    
     x_grid = collect((-Nx÷2):(Nx÷2 - 1)) .* dx 
         
-    t_vec = t0_float:dt_float:T_end_float
-    num_time_steps = length(t_vec)
-    plot_indices = 1:plot_every:num_time_steps
-    num_frames = length(plot_indices)
-    
-    # Operators setup
     half_Nx = Nx ÷ 2
     kx = (T_type(pi) / Lx) .* vcat(0:(half_Nx - 1), (-half_Nx):-1) 
     kx_float = [Float64(val) for val in kx]
@@ -273,18 +270,33 @@ function run_simulation()
     println("Computing matrix exponential filters...")
     E, E2, Q, f1, f2, f3 = compute_etdrk4_coefficients(L_operator, dt_float, T_type)
     
-    # Visual Layout
     l = @layout [a; b c]
-                 
+
+    # -----------------------------------   
+    # run simulation for each wave number
+    # -----------------------------------   
+
     for m in 1:length(k_i)
         k_init = k_i[m]
+
+        lambda_k = k_init^2 * (mu - 3 * mass^2 - k_init^2)
+
+        # final T defined so that freeze-out happens
+        T_end_float = lambda_k > 0 ? Float64(2.5/lambda_k) : 10000.0
+
+        t_vec = t0_float:dt_float:T_end_float
+        num_time_steps = length(t_vec)
+        plot_indices = 1:plot_every:num_time_steps
+        num_frames = length(plot_indices)
+
         println("\n⚡ Launching Simulation: Initial Wavenumber k = $(round(k_init, digits=3))")
         
-        u0 = T_type(0.001) .* cos.(k_init .* x_grid) .+ mass
+        # IC
+        u0 = T_type(0.001) .* cos.(k_init .* x_grid) .+ T_type(mass)
         u  = copy(u0)
         
         @time u_hist, u_hat_hist, dom_t, dom_k = solve_etdrk4!(
-            u, num_time_steps, t_vec, mu, mass, kx, Laplacian_k, dealias_mask,
+            u, num_time_steps, t_vec, T_type(mu), T_type(mass), kx, Laplacian_k, dealias_mask,
             E, E2, Q, f1, f2, f3, plot_every, num_frames
         )
 
@@ -292,14 +304,13 @@ function run_simulation()
         video_filename = "$(T_type)_k=$(round(k_init, digits=3))_T=$(round(T_end_float, digits=0)).mp4"
         shifted_kx = fftshift(kx_float)
         
-        println("Time k3 dominates: ", dom_t[2])
-        
         anim = @animate for i in 1:num_frames
             current_t = t_vec[plot_indices[i]]
             
-            p1 = plot(x_grid, u_hist[:, i], 
+            # subtract mass
+            p1 = plot(x_grid, u_hist[:, i] .- mass_float, 
                       title="t = $(round(current_t, digits=3))", 
-                      xlabel="x", ylabel="u", 
+                      xlabel="x", ylabel="v = u - m", 
                       linewidth=1.5, color=:blue, legend=false, 
                       ylims=(-1.2 * sqrt(mu_float), 1.2 * sqrt(mu_float)), grid=true)
             

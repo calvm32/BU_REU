@@ -255,8 +255,8 @@ function run_simulation(T_type::Type{T}) where {T}
     mu0 = T(-0.2)
     muf = T(0.21)
     muf0 = muf
-    xscale = T(10.0)
-    Lx = xscale * T(pi)
+    L = T(10.0)
+    Lx = L * T(pi)
     Nx = 1024
     l2_thr = T(1.0)
     
