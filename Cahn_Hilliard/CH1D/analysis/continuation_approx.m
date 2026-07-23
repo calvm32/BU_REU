@@ -26,7 +26,7 @@ N = 2^7;
 m1 = 0;
 
 % choose max subcritical, get n
-n_subc = 5; % 1,...,n modes = subcritical, n+1,... modes = supercritical
+n_subc = 3; % 1,...,n modes = subcritical, n+1,... modes = supercritical
 m2 = (2*n_subc+1)*sqrt(2)/20; 
 
 n_check = 2;
@@ -169,10 +169,7 @@ lgd_bot = legend(ax4, [h3], 'Orientation','horizontal', 'NumColumns', 4);
 lgd_bot.Layout.Tile = 'south';
 lgd_bot.Layout.TileSpan = [1 2];
 
-% =========================================================================
 % FOURIER PSEUDOSPECTRAL AMPLITUDE CONTINUATION (SECANT PREDICTOR)
-% =========================================================================
-
 function [mu_vec, norm_vec, prof_u, x_plot] = trace_branch_spectral(mode_n, m, L, signA, N)
     % Grid setup: Domain is [-pi*L, pi*L)
     x = (2*pi*L/N) * (-N/2 : N/2-1)';
