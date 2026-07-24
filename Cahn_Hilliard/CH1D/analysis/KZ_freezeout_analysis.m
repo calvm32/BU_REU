@@ -6,159 +6,314 @@ clc; clear; close all;
 %% Description
 % Find how domain wall density corresponds with different values (freezeout time, largest modes, etc.)
 % and how theoretical values compare with computed values
-
-% specifically, mu = tanh = bounded for all time
+% analyzing averages for diff. epsilon ( plot theoretical vs. computed values of density, freezout time, and largest wave mode )
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
 
 %% Parameters & Setup
-epsilon = 0.05;
-alpha = 1.0; 
-beta = 0.0; % beta=0 so bifurcation occurs exactly at t=0
+epsilon_list = 10.^(linspace(-4, 0, 50));
+plot_diff = false;
 
-% KZ time-scales
-freeze_out_time = epsilon^(-2/3);
-t0 = -2.0 * freeze_out_time; % Allow for adiabatic tracking
-T = freeze_out_time + 100.0;
-dt = 0.05;
-
-% Domain setup [-L*pi, L*pi]
-scale = 100;
-Lx = 2 * scale * pi;
-Nx = 2^11;
+t0 = -2.0;
+L = 100;
+Lx = L*pi;
+Nx = 2^12;
 dx = Lx/Nx;
-plot_dt = 0.5; 
-plot_every = round(plot_dt / dt);
 
 x = (-Nx/2:Nx/2-1)*dx;
 kx = 2*pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
 Laplacian_hat = -kx.^2;
 L_operator = -(Laplacian_hat.^2);
-kx_max = max(abs(kx));
-dealias_mask = abs(kx) <= (2/3)*kx_max;
 
-% ICs
+avg_num = 10;
 sigma = 0.01;
-u0_real = sigma*randn(1,Nx);
-u0_real = u0_real - mean(u0_real); % enforce zero mass for H^{-1} bounds
-u0_hat = fft(u0_real);
 
-%% Define the Evolution Problem (Bounded mu(t))
-mu = @(t) alpha * tanh(epsilon * t) + beta;
+%% Storage for final plots
+eps_out = epsilon_list;
 
-nonlin_op = @(u_hat, t) dealias_mask .* Laplacian_hat .* ...
-    fft( real(ifft(u_hat)).^3 - mu(t)*real(ifft(u_hat)) ); 
+density_comput = zeros(size(epsilon_list));
+density_theory = zeros(size(epsilon_list));
+density_diff = zeros(size(epsilon_list));
 
-problem = EvolutionProblem(L_operator, nonlin_op, u0_hat, [t0, T]);
+freezeout_time_comput = zeros(size(epsilon_list));
+freezeout_time_theory = zeros(size(epsilon_list));
+freezeout_time_diff = zeros(size(epsilon_list));
+
+k_theory = zeros(size(epsilon_list));
+k_comput = zeros(size(epsilon_list));
+k_diff = zeros(size(epsilon_list));
+
+%% Define the Evolution Problem
+% For type 3, mu(t) = t*epsilon is linear with respect to epsilon
+mu = @(t, eps_val) t * eps_val;
+
+% Define the nonlinear operator handle without dealiasing mask (as in original type = 3)
+nonlin_op = @(u_hat, t, eps_val) Laplacian_hat .* ...
+    fft( real(ifft(u_hat)).^3 - mu(t, eps_val)*real(ifft(u_hat)) );
 
 %% Setup the Solver
-solver = ETDRK4Solver(16); 
+% Using 32 complex mean points as in the original type = 3 ETDRK4 formulation
+solver = ETDRK4Solver(32);
 
-%% Execute the Solve with Monitor
-params.epsilon = epsilon;
-params.alpha = alpha;
-params.beta = beta;
-params.blowup_time = freeze_out_time;
-params.Lx = Lx;
-params.Nx = Nx;
-params.dx = dx;
-params.Laplacian_hat = Laplacian_hat;
-params.plot_every = plot_every;
-params.x = x;
-params.kx = kx;
-params.mu = mu;
-params.save_video = false;
+%% Execute the Solve
+for eidx = 1:length(epsilon_list)
 
-monitor = DensityL2FreeEnergyMonitor(params); 
-disp('Starting integration...');
-sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
-disp('Integration complete.');
+    epsilon = epsilon_list(eidx);
+
+    blowup_time = (epsilon/2)^(-2/3);
+    T = min(blowup_time + 60.0, 150);
+
+    blowup_time = (epsilon/2)^(-2/3);
+    dt = min(0.01, 0.01 * blowup_time);
+
+    t = t0:dt:T;
+    num_time_steps = length(t);
+
+    %% tracking average for each epsilon
+    density_comput_avg = zeros(1,num_time_steps);
+    density_theory_avg = zeros(1,num_time_steps);
+
+    freezeout_time_comput_avg = 0;
+    freezeout_time_theory_avg = 0;
+
+    usq_avg = zeros(Nx,1);
+
+    %% average runs for each epsilon
+    for run_idx = 1:avg_num
+
+        %% initial condition
+        rng(100000*eidx + run_idx,'twister');
+
+        u = sigma * randn(1,Nx);
+        u_hat = fft(u);
+
+        %% tracking once for each epsilon
+        density_comput_eps = zeros(1,num_time_steps);
+        density_theory_eps = zeros(1,num_time_steps);
+
+        freezeout_time_comput_eps = 0;
+        freezeout_time_theory_eps = blowup_time;
+
+        %% Instantiate problem and solve via built-in ETD-RK4 solver
+        curr_nonlin_op = @(u_hat_val, t_val) nonlin_op(u_hat_val, t_val, epsilon);
+        problem = EvolutionProblem(L_operator, curr_nonlin_op, u_hat, [t0, T]);
+        
+        sol = evolution_solve(problem, solver, dt, save_every=1);
+
+        %% Extract solved trajectory data
+        u_data = sol.solution;
+        if size(u_data, 1) == num_time_steps && size(u_data, 2) == Nx
+            u_data = u_data';
+        end
+        t_solve = sol.time(:)';
+
+        [~, freeze_idx] = min(abs(t_solve - blowup_time));
+
+        %% diagnostics over solved time steps
+        for n = 2:length(t_solve)
+
+            t_curr = t_solve(n);
+            u_hat_curr = u_data(:, n).';
+            u_curr = real(ifft(u_hat_curr));
+
+            density_theory_eps(n) = domainwall_density_theory(t_curr, u_hat_curr, Laplacian_hat, epsilon);
+            density_comput_eps(n) = domainwall_density_comput(u_curr, Lx);
+
+            mask = t_solve > 10;
+            density_masked = density_comput_eps(mask);
+
+            max_density = max(density_masked);
+            tol = 1e-4*max_density;
+
+            mask_idx = find(mask);
+            freeze_idx_local = find(density_masked >= max_density - tol, 1, 'first');
+
+            if ~isempty(freeze_idx_local)
+                freeze_idx = mask_idx(freeze_idx_local);
+                freezeout_time_comput_eps = t_solve(freeze_idx);
+            end
+
+            if n == freeze_idx
+                usq_avg = usq_avg + (abs(u_hat_curr(:)).^2) / avg_num;
+            end
+
+        end
+
+        %% running averages
+        density_comput_avg = density_comput_avg + density_comput_eps/avg_num;
+        density_theory_avg = density_theory_avg + density_theory_eps/avg_num;
+
+        freezeout_time_comput_avg = freezeout_time_comput_avg + freezeout_time_comput_eps/avg_num;
+        freezeout_time_theory_avg = freezeout_time_theory_avg + freezeout_time_theory_eps/avg_num;
+
+        k_theory(eidx) = (epsilon/2)^(1/6);
+
+    end
+
+    %% POST PROCESS PER EPSILON
+    [~,cut] = min(abs(t - blowup_time));
+
+    density_comput(eidx) = density_comput_avg(cut);
+    density_theory(eidx) = density_theory_avg(cut);
+    density_diff(eidx) = density_theory_avg(cut) - density_comput_avg(cut);
+
+    freezeout_time_comput(eidx) = freezeout_time_comput_avg;
+    freezeout_time_theory(eidx) = freezeout_time_theory_avg;
+    freezeout_time_diff(eidx) = freezeout_time_theory_avg - freezeout_time_comput_avg;
+
+    kshift = fftshift(kx);
+
+    [~, freeze_idx] = min(abs(t - blowup_time));
+    if n == freeze_idx
+        usq_avg = usq_avg + (abs(u_hat(:)).^2) / avg_num;
+    end
+
+    spec = fftshift(usq_avg);
+
+    [~,idx] = max(spec);
+
+    k_comput(eidx) = abs(kshift(idx));
+    k_diff(eidx) = k_theory(eidx) - k_comput(eidx);
+
+    fprintf("epsilon %.0f/%.0f = %.3f done\n", eidx, length(epsilon_list), epsilon);
+
+end
 
 %% Post-Processing
-sol_data = squeeze(sol.solution);
-t_data = sol.time(:)'; 
-num_steps = length(t_data);
+if ~plot_diff
+    % Fit a line to log10(epsilon) vs log10(computed freeze-out time)
+    valid_mask = freezeout_time_comput > 0; % Ensure no zero/NaN values break the log
+    log_eps = log10(eps_out(valid_mask));
+    log_t   = log10(freezeout_time_comput(valid_mask));
 
-u_data = sol.solution;
-if size(u_data, 1) == num_steps && size(u_data, 2) == Nx
-    u_data = u_data';
+    % 1st order polynomial fit (y = m*x + b)
+    p = polyfit(log_eps, log_t, 1);
+    slope_computed = p(1);       % Should be very close to -0.6667
+    intercept_computed = p(2);
+
+    % Generate fitted line for plotting
+    fit_line = 10.^(polyval(p, log10(eps_out)));
 end
-
-% Initialize arrays
-H1_norm = zeros(1, num_steps);
-Hmin1_norm = zeros(1, num_steps);
-dominant_k = zeros(1, num_steps);
-
-% Precompute Fourier weights for Sobolev norms
-w_H1 = (1 + kx.^2);
-w_Hmin1 = zeros(size(kx));
-w_Hmin1(2:end) = 1 ./ (kx(2:end).^2); % avoid division by zero at k=0
-
-for i = 1:num_steps
-    u_current_hat = u_data(:, i).';
-    power_spectrum = abs(u_current_hat / Nx).^2;
-    
-    % Pullback attractor norm metrics
-    H1_norm(i) = sqrt(sum(w_H1 .* power_spectrum));
-    Hmin1_norm(i) = sqrt(sum(w_Hmin1 .* power_spectrum));
-    
-    % Track dominant wave mode
-    [~, max_idx] = max(power_spectrum(1:floor(Nx/2)));
-    dominant_k(i) = kx(max_idx);
-end
-
-%% KZ Theoretical vs Empirical Integrated Eigenvalue
-[~, freeze_out_idx] = min(abs(t_data - freeze_out_time));
-t_hat = t_data(freeze_out_idx); 
-
-u_hat_freezeout = u_data(:, freeze_out_idx).';
-empirical_power = abs(u_hat_freezeout(1:floor(Nx/2))).^2;
-k_pos = kx(1:floor(Nx/2));
-
-% Analytical integrated eigenvalue calculation from t=0 to t_hat for tanh
-% \int_0^{\hat{t}} -k^4 + k^2(alpha*tanh(eps*s) + beta) ds
-int_eval = -k_pos.^4 .* t_hat + k_pos.^2 .* ( (alpha/epsilon)*log(cosh(epsilon*t_hat)) + beta*t_hat );
-theoretical_amplification = exp(2 * int_eval); 
 
 %% Plotting
-figure('Position', [100, 100, 1200, 800]);
+figure;
 
-% Plot 1: Phase Space tracking of the Pullback Attractor bounds
-subplot(2,2,1);
-plot(Hmin1_norm, H1_norm, 'k-', 'LineWidth', 1.5); hold on;
-% Plot theoretical limit bounds
-kappa_1 = 2 / (scale^4); 
-kappa_2 = Lx * (alpha+beta)^2;
-rho_0 = sqrt(kappa_2 / kappa_1);
-xline(rho_0, 'r--', 'LineWidth', 1);
-xlabel('$\|v\|_{H^{-1}}$', 'Interpreter', 'latex');
-ylabel('$\|v\|_{H^{1}}$', 'Interpreter', 'latex');
-title('Pullback Attractor Trajectory vs $\rho_0$ Bound', 'Interpreter', 'latex');
-legend('Trajectory', 'Theoretical $\rho_0$', 'Location', 'Best', 'Interpreter', 'latex');
-grid on;
+if plot_diff
 
-% Plot 2: KZ Structure Factor Peak Match
-subplot(2,2,2);
-plot(k_pos, empirical_power / max(empirical_power), 'b-', 'LineWidth', 1.5); hold on;
-plot(k_pos, theoretical_amplification / max(theoretical_amplification), 'r--', 'LineWidth', 1.5);
-xline(epsilon^(1/6), 'k:', 'LineWidth', 2); 
-xlim([0, 1.5]);
-xlabel('Wavenumber $k$', 'Interpreter', 'latex');
-ylabel('Normalized Power Spectrum', 'Interpreter', 'latex');
-legend('Empirical FFT', 'Integrated $\lambda_k$', 'KZ $\hat{k} \sim \epsilon^{1/6}$', 'Interpreter', 'latex');
-title(sprintf('Structure Factor Profile at $\\hat{t} = %.2f$', t_hat), 'Interpreter', 'latex');
-grid on;
+    subplot(1,3,1)
+    plot(eps_out, density_diff);
+    xlabel('\epsilon');
+    ylabel('n(\epsilon)');
+    title('Domain Wall Density at Freeze-Out');
+    grid on;
 
-% Plot 3: Time Evolution of the Scale Freeze-out
-subplot(2,2,[3 4]);
-plot(t_data, dominant_k, 'b-', 'LineWidth', 1.5); hold on;
-yline(epsilon^(1/6), 'r--', 'LineWidth', 1.5);
-xline(freeze_out_time, 'k:', 'LineWidth', 1.5);
-xline(0, 'g:', 'LineWidth', 1.5);
-ylim([0, 1.2 * max(dominant_k)]);
-xlabel('Time $t$', 'Interpreter', 'latex');
-ylabel('Dominant $k$', 'Interpreter', 'latex');
-title('Evolution of Characteristic Length Scale', 'Interpreter', 'latex');
-legend('Empirical Dominant $k$', 'KZ Predicted $\hat{k}$', 'Freeze-out Time $\hat{t}$', 'Bifurcation ($t=0$)', 'Interpreter', 'latex');
-grid on;
+    subplot(1,3,2)
+    loglog(eps_out,freezeout_time_diff,'o-');
+    xlabel('\epsilon');
+    ylabel('t(\epsilon)');
+    title('Freeze-Out Time');
+    grid on;
+
+    subplot(1,3,3)
+    plot(eps_out,k_diff,'o-');
+    xlabel('\epsilon');
+    ylabel('k_{max}');
+    title('Highest-Growing Wave Modes');
+    grid on;
+
+else
+
+    subplot(1,3,1)
+    loglog(eps_out, freezeout_time_comput, 'o', 'DisplayName', 'Computed'); hold on;
+    loglog(eps_out, freezeout_time_theory, 'k--', 'DisplayName', 'Theory (\alpha = -2/3)');
+    loglog(eps_out, fit_line, 'r-', 'LineWidth', 1.5, ...
+        'DisplayName', sprintf('Fit (slope = %.3f)', slope_computed));
+    xlabel('\epsilon');
+    ylabel('Freeze-Out Time \hat{t}');
+    title('Freeze-Out Time Scaling');
+    legend('Location', 'northeast');
+    grid on;
+
+    subplot(1,3,1)
+    plot(eps_out,freezeout_time_comput,'o-'); hold on;
+    plot(eps_out,freezeout_time_theory,'k--');
+    xlabel('\epsilon');
+    ylabel('freeze-out time');
+    title('Freeze-Out Time');
+    legend('computed','theoretical');
+    grid on;
+
+    subplot(1,3,2)
+    loglog(eps_out,density_comput,'o-'); hold on;
+    loglog(eps_out,density_theory,'s-');
+    xlabel('\epsilon');
+    ylabel('Domain wall density');
+    title('Domain Wall Density');
+    legend('computed','theoretical', 'Location', 'northwest');
+    grid on;
+
+    subplot(1,3,3)
+    plot(eps_out,k_comput,'o-'); hold on;
+    plot(eps_out,k_theory,'s-');
+    xlabel('\epsilon');
+    ylabel('k_{max}');
+    title('Highest-Growing Wave Modes');
+    legend('computed','theoretical');
+    grid on;
+
+end
+
+
+%% FUNCTIONS
+
+function mu_val = mu_calculate(t, epsilon)
+    mu_val = t*epsilon;
+end
+
+function P = power_spec(t,u_hat,Laplacian_k,epsilon)
+    ksq = -Laplacian_k;
+    P = abs(u_hat).^2 .* exp(t^2*ksq*epsilon - 2*t*ksq.^2);
+end
+
+function n = domainwall_density_theory(t,u_hat,Laplacian_k,epsilon)
+    P = power_spec(t,u_hat,Laplacian_k,epsilon);
+    ksq = -Laplacian_k;
+
+    n = (1/pi)*sqrt(sum(ksq.*P)/sum(P));
+end
+
+function n = domainwall_density_comput(u,Lx)
+    walls = sum(u .* circshift(u,-1) < 0);
+    n = walls/Lx;
+end
+
+function t_hat = theoretical_freezeout_time(epsilon,kx)
+    sigma = 0.01;
+    P0 = sigma^2*ones(size(kx));
+    dk = abs(kx(2)-kx(1));
+
+    f = @(t) freezeout_equation(t,epsilon,kx,P0,dk);
+
+    t_guess = 2^(2/3)*epsilon^(-2/3);
+    t_hat = fzero(f,t_guess);
+end
+
+function val = freezeout_equation(t,epsilon,kx,P0,dk)
+    arg = epsilon*(kx.^2)*t.^2 - 2*(kx.^4)*t;
+    arg = min(arg,700);
+
+    val = 3*sum(P0 .* exp(arg))*dk - epsilon*t;
+end
+
+function C = fit_freezeout_constant(epsilon_list,t_hat_list)
+    x = epsilon_list(:).^(-2/3);
+    y = t_hat_list(:);
+
+    C = (x'*y)/(x'*x);
+end
+
+function val = l2_norm_periodic_1D(u_hat,Lx)
+    Nx = length(u_hat);
+    val = sqrt(Lx)* sqrt(sum(abs(u_hat).^2))/Nx;
+end

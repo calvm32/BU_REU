@@ -26,8 +26,8 @@ dt = 0.05;
 tau = t0-100; % start time for calculating omega limit sets
 
 % Domain setup [-L*pi, L*pi]
-scale = 100;
-Lx = 2 * scale * pi;
+L = 100;
+Lx = 2 * L * pi;
 Nx = 2^11;
 dx = Lx/Nx;
 plot_dt = 1.0; 
@@ -41,7 +41,7 @@ kx_max = max(abs(kx));
 dealias_mask = abs(kx) <= (2/3)*kx_max;
 
 % Rigorous bounds (lemmas 1-2)
-kappa_1 = 2 / (1+scale^2)^2;
+kappa_1 = 2 / (1+L^2)^2;
 C_ab = max(1-alpha-beta, 1+alpha-beta)^2*Lx/4;
 C_m = Lx*3^7*m^4/(2^4);
 kappa_2 = C_m + 4*C_ab;
