@@ -23,6 +23,10 @@ dx = Lx/Nx;
 
 x = (-Nx/2:Nx/2-1)*dx;
 kx = 2*pi*[0:Nx/2-1 -Nx/2:-1]/Lx;
+
+kx_max = max(abs(kx));
+dealias_mask = abs(kx) <= (2/3)*kx_max;
+
 Laplacian_hat = -kx.^2;
 L_operator = -(Laplacian_hat.^2);
 
@@ -48,8 +52,8 @@ k_diff = zeros(size(epsilon_list));
 % For type 3, mu(t) = t*epsilon is linear with respect to epsilon
 mu = @(t, eps_val) t * eps_val;
 
-% Define the nonlinear operator handle without dealiasing mask (as in original type = 3)
-nonlin_op = @(u_hat, t, eps_val) Laplacian_hat .* ...
+% Define the nonlinear operator w/ dealiasing
+nonlin_op = @(u_hat, t, eps_val) dealias_mask .* Laplacian_hat .* ...
     fft( real(ifft(u_hat)).^3 - mu(t, eps_val)*real(ifft(u_hat)) );
 
 %% Setup the Solver
@@ -62,9 +66,8 @@ for eidx = 1:length(epsilon_list)
     epsilon = epsilon_list(eidx);
 
     blowup_time = (epsilon/2)^(-2/3);
-    T = min(blowup_time + 60.0, 150);
+    T = min(blowup_time + 60.0, 1000);
 
-    blowup_time = (epsilon/2)^(-2/3);
     dt = min(0.01, 0.01 * blowup_time);
 
     t = t0:dt:T;
