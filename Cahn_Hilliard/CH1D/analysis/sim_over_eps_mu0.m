@@ -5,19 +5,19 @@ clear all; close all;
 % and a history of the first five amplitudes.
 
 %% 1. Grid Parameters
-EP = logspace(-6, -2, 100);       
-MU0 = linspace(-0.5, 0, 100); 
+EP = logspace(-5, -2, 22);       
+%MU0 = linspace(-0.5, 0, 100); 
+MU0 = -0.2;
+
+DMODE = zeros(length(EP),1);
+DMODE_final = zeros(length(EP),1);
+MUTHR = zeros(length(EP),1);
 
 [EpsMesh, Mu0Mesh] = meshgrid(EP, MU0);
 flat_EP  = EpsMesh(:);
 flat_MU0 = Mu0Mesh(:);  
 
 num_total_sims = length(flat_EP);
-
-% Preallocate flat result arrays
-flat_DMODE_HIST = cell(num_total_sims, 1);
-flat_L2_HIST = cell(num_total_sims, 1);
-flat_AMP_HISTS = cell(num_total_sims, 1);
 
 %% Simulation Configuration
 dt0 = 0.02; 
@@ -112,16 +112,21 @@ parfor idx = 1:num_total_sims
                     termination_event=termination_event, ...
                     monitors=monitor);
     
-    dominate_modes = monitor.dominate_mode(1:monitor.dom_mode_ind, :);
+    dominate_modes = monitor.dominate_mode;
 
-    filename = fsprintf('sample_ep=1e%.5f_mu0=%.7f_%s', log10(ep), mu0, 'Float64');
-    s = struct("DMODE_HIST", dominate_modes, ...
-               "L2_HIST", monitor.l2_history(1:monitor.step_idx), ...
-               "AMP_HISTS", monitor.amp_history(:, 1:monitor.step_idx), ...
-               "ep", ep, "mu0", mu0, "Lx", Lx, "Nx", Nx, "dt", dt, ...
-               "terminate_thr", terminate_thr, 'datatype', 'Float64')
- 
-    save(filename, "-fromstruct", s);
+    [dom_mode_max, dom_mode_idx] = max(dominate_modes(:, 2));
+    mu_thr = mu(dominate_modes(dom_mode_idx, 1));
+    DMODE_final(idx) = dom_mode_max;
+    MUTHR(idx) = mu_thr;
+
+    % filename = fsprintf('sample_ep=1e%.5f_mu0=%.7f_%s', log10(ep), mu0, 'Float64');
+    % s = struct("DMODE_HIST", dominate_modes, ...
+    %            "L2_HIST", monitor.l2_history(1:monitor.step_idx), ...
+    %            "AMP_HISTS", monitor.amp_history(:, 1:monitor.step_idx), ...
+    %            "ep", ep, "mu0", mu0, "Lx", Lx, "Nx", Nx, "dt", dt, ...
+    %            "terminate_thr", terminate_thr, 'datatype', 'Float64')
+    % 
+    % save(filename, "-fromstruct", s);
 
     %% SEND UPDATE TO QUEUE
     send(q, idx);

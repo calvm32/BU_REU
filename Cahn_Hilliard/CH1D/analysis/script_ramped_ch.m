@@ -11,7 +11,7 @@ clear all; close all;
 % ------------------------------------------------------------------------------------------
 
 % range of epsilons
-EP = 0.9*10.^[-3]; %10.^[-4.5:1:-4];
+EP = logspace(-5, -2, 22); %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -74,12 +74,11 @@ display(MUS)
 
 
 % %all modes on
-u0 = 0.01*cos((4/50)*x) + 0.01*cos((5/50)*x);
-u_hat0 = fft(u0);
-% uh0 = ones(size(x));
-% u0 = ifft(uh0);
-% u0 = u0 - mean(u0);
+% u0 = 0.01*cos((4/50)*x) + 0.01*cos((5/50)*x);
 % u_hat0 = fft(u0);
+m = 0:Nx-1;
+u_hat0 = (-1).^m;
+u_hat0(1) = mass;
 
 
 %%%%% For loop over range of epsilons
@@ -111,14 +110,16 @@ for ii = 1:length(EP)
     % monitor = BifurcationMonitorHeadless(mu, kx, Lx, Nx);
     % Use BifurcationMonitorInMu if you do:
     % monitor = BifurcationMonitorInMu(mu, kx, Lx, Nx, x, k_j, plot_every=plot_every, save_video=save_video, video_filename=sprintf('ep=%.5f_mu0=%.2f.avi', ep, mu0), video_framerate=30);
-    monitor = BifurcationMonitorInMuModeHistory(mu, kx, Lx, Nx, x, k_j, 5, ...
+    monitor = BifurcationMonitorInMuModeHistory(mu, kx, Lx, Nx, x, k_j, 25, ...
         plot_every=plot_every, ...
         save_video=save_video, ...
         video_filename=sprintf('ep=1e%.4f_mu0=%.2f.avi', log10(ep), mu0), ...
         video_framerate=30);
 
+    termination_event = @(u, t) monitor.l2_history(monitor.step_idx) >= 2e0;
+
     % Execute
-    sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor);
+    sol = evolution_solve(problem, solver, dt, save_every=plot_every, monitors=monitor, termination_event=termination_event);
     
     % Find high amplitude time
     j_thr = find(monitor.l2_history > l2_thr, 1);
@@ -126,13 +127,15 @@ for ii = 1:length(EP)
     mu_thr = mu(t_thr);
 
     % Find dominate mode at high amplitude
-    dominate_modes = monitor.dominate_mode(1:monitor.dom_mode_ind, :);
+    dominate_modes = monitor.dominate_mode;
     j_dom_mode_at_thr = find(dominate_modes(:, 1) < t_thr, 1, 'last');
     time_dom_mode_at_thr = dominate_modes(j_dom_mode_at_thr, 1);
     dom_mode = dominate_modes(j_dom_mode_at_thr, 2);  
-    dom_mode_final = dominate_modes(end, 2);
+    %dom_mode_final = dominate_modes(end, 2);
+    [dom_mode_max, dom_mode_idx] = max(dominate_modes(:, 2));
+    mu_thr = mu(dominate_modes(dom_mode_idx, 1));
     
-    DMODE_final(ii) = dom_mode_final;
+    DMODE_final(ii) = dom_mode_max;
     DMODE(ii) = dom_mode;
     MUTHR(ii) = mu_thr;
     
@@ -142,8 +145,17 @@ for ii = 1:length(EP)
     % end
 end
 
-% figure(20)
-% plot(EP,DMODE,'-o','LineWidth',2)
+figure(1)
+plot(log(EP), log(DMODE_final),'-o','LineWidth',2)
+xlabel('log(\epsilon)')
+ylabel('log(\omega_{out})')
+title('Frequency at Large Amplitude Onset vs \epsilon')
+
+figure(2)
+plot(log(EP), log(MUTHR),'-o','LineWidth',2)
+xlabel('log(\epsilon)')
+ylabel('log(\mu_{out})')
+title('\mu_{out} of Large Amplitude Onset vs \epsilon')
 
 % Save collective run data
 % save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');

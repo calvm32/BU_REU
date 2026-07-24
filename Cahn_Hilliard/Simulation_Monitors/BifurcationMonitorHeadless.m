@@ -10,16 +10,20 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         t_grid (1, :) double
         mu_grid (1, :) double
         num_amplitudes double
+        dominate_mode_ double
         subtract_mass (1, 1) logical
 
         % Tracking arrays
         l2_history double
-        dominate_mode double % 2D array: [t, dom_mode]
         dom_mode_ind = 1
         amp_history double
         mass double
 
         step_idx = 0
+    end
+
+    properties (Dependent = true)
+        dominate_mode double % 2D array: [t, dom_mode]
     end
 
     methods
@@ -55,10 +59,10 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             obj.mu_grid = obj.mu(t_grid);
 
             % Initial dominant mode tracking
-            obj.dominate_mode = NaN(20, 2);
+            obj.dominate_mode_ = NaN(20, 2);
             u0 = real(ifft(u0_hat));
             [~, max_index] = max(abs(u0_hat - mean(u0)));
-            obj.dominate_mode(1, :) = [t_grid(1), obj.kx(max_index)];
+            obj.dominate_mode_(1, :) = [t_grid(1), obj.kx(max_index)];
             obj.dom_mode_ind = 1;
 
             obj.l2_history = zeros(1, num_steps);
@@ -87,9 +91,9 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
             [~, max_index] = max(abs(u_hat_ac));
             dom_mode = obj.kx(max_index);
 
-            if obj.dom_mode_ind == 0 || obj.dominate_mode(obj.dom_mode_ind, 2) ~= dom_mode
+            if obj.dom_mode_ind == 0 || obj.dominate_mode_(obj.dom_mode_ind, 2) ~= dom_mode
                 obj.dom_mode_ind = obj.dom_mode_ind + 1;
-                obj.dominate_mode(obj.dom_mode_ind, :) = [t, dom_mode];
+                obj.dominate_mode_(obj.dom_mode_ind, :) = [t, dom_mode];
             end
         end
 
@@ -98,8 +102,8 @@ classdef BifurcationMonitorHeadless < SimulationMonitor
         end
 
         % Public accessor for dominant mode data (helpful for analytical comparisons in calling scripts)
-        function dominate_mode = get_dominate_mode(obj)
-            dominate_mode = obj.dominate_mode(1:obj.dom_mode_ind, :);
+        function dominate_mode = get.dominate_mode(obj)
+            dominate_mode = obj.dominate_mode_(1:obj.dom_mode_ind, :);
         end
     end
 end

@@ -96,7 +96,7 @@ classdef BifurcationMonitorInMuModeHistory < BifurcationMonitorHeadless
             % Subplot 3: Dominant mode
             obj.ax3 = subplot(2,3,5);
             obj.hLine3 = stairs(obj.ax3, 0, 0, 'LineWidth', 2);
-            labels = cellstr("k_" + (0:numel(obj.k_j)-1));
+            labels = cellstr("k_{" + (0:numel(obj.k_j)-1) + "}");
             yline(obj.ax3, obj.k_j, '--r', labels, 'LineWidth', 2);    
             xlabel(obj.ax3, '\mu'); 
             ylabel(obj.ax3, 'Wavenumber (k)');
@@ -161,7 +161,7 @@ classdef BifurcationMonitorInMuModeHistory < BifurcationMonitorHeadless
                 obj.l2_line.YData = obj.l2_history(1:obj.step_idx);
                 axis(obj.ax2, 'tight');
 
-                valid_modes = obj.dominate_mode(1:obj.dom_mode_ind, :);
+                valid_modes = obj.dominate_mode;
                 set(obj.hLine3, 'XData', obj.mu([valid_modes(:, 1); t]), 'YData', [valid_modes(:, 2); valid_modes(end, 2)]);
 
                 for k = 1:obj.num_amplitudes
