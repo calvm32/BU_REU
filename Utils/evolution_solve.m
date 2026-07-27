@@ -57,6 +57,10 @@ function [sol] = evolution_solve(problem, solver, dt, options)
         if ~isempty(options.termination_event) && options.termination_event(u, t_grid(n))
             break;
         end
+
+        if mod(n, 3000) == 0
+            sprintf("done w/ %.0f/%.0f", n, length(t_grid))
+        end
     end
 
     %% Finalize monitors

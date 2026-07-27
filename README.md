@@ -52,9 +52,9 @@ For now, we provide ETDRK4 and Crank-Nicolson, with an addition gradient flow so
 `SimulationMonitors` is an abstract class allowing users to process the solution at intermediate time steps for logging and plotting. The initialization is called by the solver populating it with the initial data and time grid. The update method is called every time step where the current time and solution are given to the monitor. The solver calls the finalize method at the end, useful for closing videos or figures, for instance. In the example above, [`DensityL2FreeEnergyMonitor`](https://github.com/calvm32/BU_REU/blob/main/Cahn_Hilliard/Simulation_Monitors/DensityL2FreeEnergyMonitor.m) is used to log and plot the solution, the theoritical and compute density, the L2 norm, and the free energy over time. It then saves this plot as a video.
 
 ---
-# Replicating transcript code
+# Replicating manuscript code
 
-Going section-by-section, we now describe how to replicate figures seen throughout the transcript.
+Going section-by-section, we now describe how to replicate figures seen throughout the manuscript.
 
 ## "Introduction"
 
