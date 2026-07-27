@@ -10,9 +10,9 @@ blowup_time = epsilon^(-2/3);
 t0 = 0.0;
 T  = 5.0;
 
-scale = 20;
-Lx = scale*pi;
-Ly = scale*pi;
+L = 20;
+Lx = L*pi;
+Ly = L*pi;
 
 Nx = 2^8;
 Ny = 2^8;
@@ -63,7 +63,7 @@ solver = CrankNicolsonSolver();
 params.mode = 'domain_wall_density';
 params.x = x;
 params.y = y;
-params.scale = scale;
+params.L = L;
 params.Lx = Lx;
 params.Ly = Ly;
 params.dx = dx;

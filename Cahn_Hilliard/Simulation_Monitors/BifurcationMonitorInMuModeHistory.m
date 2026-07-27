@@ -109,12 +109,15 @@ classdef BifurcationMonitorInMuModeHistory < BifurcationMonitorHeadless
             hold(obj.ax4, 'on'); 
             obj.amp_plots = gobjects(1, obj.num_amplitudes); 
             
+            colors = turbo(obj.num_amplitudes);
             for k = 1:obj.num_amplitudes
-                obj.amp_plots(k) = semilogy(obj.ax4, NaN, NaN, 'LineWidth', 2);
+                obj.amp_plots(k) = semilogy(obj.ax4, NaN, NaN, 'LineWidth', 2, 'Color', colors(k, :));
             end
 
-            obj.crit_lines = gobjects(1,obj.num_amplitudes);
-            for k = 1:obj.num_amplitudes
+            num_lines = obj.num_amplitudes + 20;
+
+            obj.crit_lines = gobjects(1,num_lines);
+            for k = 1:num_lines
                 mu_k_c = 3*obj.local_mass^2 + (pi*k/obj.Lx)^2;
                 obj.crit_lines(k) = xline(obj.ax4, mu_k_c, ':', sprintf('\\mu_{%d}^c', k), ...
                     'LineWidth', 1.5, 'Color', [0.5 0.5 0.5], ...
@@ -123,8 +126,17 @@ classdef BifurcationMonitorInMuModeHistory < BifurcationMonitorHeadless
                     
             end
             
-            labels = arrayfun(@(k) sprintf('u_%d', k), 1:obj.num_amplitudes, 'UniformOutput', false);
-            legend(obj.ax4, obj.amp_plots, labels, 'Location', 'southwest', 'Interpreter', 'tex');
+            colormap(obj.ax4, colors);
+            set(obj.ax4, 'CLim', [0.5, obj.num_amplitudes + 0.5]);
+            cb = colorbar(obj.ax4);
+            cb.Label.String = 'Mode Index (k)';
+            cb.Label.Interpreter = 'tex';
+            if obj.num_amplitudes <= 20
+                cb.Ticks = 1:obj.num_amplitudes;
+            else
+                cb.Ticks = unique(round(linspace(1, obj.num_amplitudes, 10)));
+            end
+
             xlabel(obj.ax4, '\mu'); 
             ylabel(obj.ax4, '$|u_k - m|$', 'Interpreter', 'latex');
             title(obj.ax4, 'Amplitude over \mu');
@@ -151,11 +163,14 @@ classdef BifurcationMonitorInMuModeHistory < BifurcationMonitorHeadless
             update@BifurcationMonitorHeadless(obj, u_hat, t);
 
             u = real(ifft(u_hat));
+            L = obj.Lx/pi;
+            m = obj.local_mass;
+            num = floor(m*L/sqrt(2));
 
             % Update plots
             if mod(obj.step_idx - 1, obj.plot_every) == 0
                 obj.hLine1.YData = u;
-                obj.hTitle1.String = sprintf('mu = %.4f, t = %.1f', obj.mu(t), t);
+                obj.hTitle1.String = sprintf('mu = %.4f, t = %.1f, m = %.4f, L = %.0f, \n number of subcritical modes = %.0f', obj.mu(t), t, m, L, num);
 
                 obj.l2_line.XData = obj.mu_grid(1:obj.step_idx);
                 obj.l2_line.YData = obj.l2_history(1:obj.step_idx);

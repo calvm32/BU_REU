@@ -11,12 +11,13 @@ clear all; close all;
 % ------------------------------------------------------------------------------------------
 
 % range of epsilons
-EP = logspace(-5, -2, 22); %10.^[-4.5:1:-4];
+EP = logspace(-3, -2, 22); %10.^[-4.5:1:-4];
 %%store dominant mode and mu threshold for each epsilon
-DMODE = zeros(length(EP),1);
-DMODE_final = zeros(length(EP),1);
+DMODE = zeros(length(EP),1);        % Dominant mode at m_out
+DMODE_final = zeros(length(EP),1);  % Dominant at the end of the run
+DMODE_max = zeros(length(EP), 1);   % Maximum mode reached
 MUTHR = zeros(length(EP),1);
-
+MUTHR_max = zeros(length(EP),1);    % First time that the maximum mode is reached
 %% Save the results of each run (including solution) individually
 save_each_run = false;
 
@@ -131,11 +132,13 @@ for ii = 1:length(EP)
     j_dom_mode_at_thr = find(dominate_modes(:, 1) < t_thr, 1, 'last');
     time_dom_mode_at_thr = dominate_modes(j_dom_mode_at_thr, 1);
     dom_mode = dominate_modes(j_dom_mode_at_thr, 2);  
-    %dom_mode_final = dominate_modes(end, 2);
+    dom_mode_final = dominate_modes(end, 2);
     [dom_mode_max, dom_mode_idx] = max(dominate_modes(:, 2));
-    mu_thr = mu(dominate_modes(dom_mode_idx, 1));
+    mu_thr_max = mu(dominate_modes(dom_mode_idx, 1));
     
-    DMODE_final(ii) = dom_mode_max;
+    DMODE_max = dom_mode_max;
+    MUTHR_max = mu_thr_max;
+    DMODE_final(ii) = dom_mode_final;
     DMODE(ii) = dom_mode;
     MUTHR(ii) = mu_thr;
     
@@ -145,20 +148,8 @@ for ii = 1:length(EP)
     % end
 end
 
-figure(1)
-plot(log(EP), log(DMODE_final),'-o','LineWidth',2)
-xlabel('log(\epsilon)')
-ylabel('log(\omega_{out})')
-title('Frequency at Large Amplitude Onset vs \epsilon')
-
-figure(2)
-plot(log(EP), log(MUTHR),'-o','LineWidth',2)
-xlabel('log(\epsilon)')
-ylabel('log(\mu_{out})')
-title('\mu_{out} of Large Amplitude Onset vs \epsilon')
-
 % Save collective run data
-% save('dominate_modes_test.mat', 'MUTHR', 'DMODE','DMODE_final', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
+save('dominate_modes_test.mat', 'MUTHR', 'MUTHR_max', 'DMODE','DMODE_final', 'DMODE_max', 'EP', 'kx', 'Lx', 'mu0', 'muf','l2_thr','mass', 'Nx', 'dt', 'plot_dmu','u0');
 
 
 function [MUS, KS] = critical_bifurcation(j, L, mass,mu0)

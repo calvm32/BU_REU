@@ -7,7 +7,7 @@ clc; clear; close all;
 % Find how domain wall density corresponds with different values (freezeout time, largest modes, etc.)
 % and how theoretical values compare with computed values
 
-% specifically, mu = tanh = bounded for all time
+% note: able to compute with mu = tanh = bounded for all time
 
 % ------------------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------------------
@@ -24,8 +24,8 @@ T = freeze_out_time + 100.0;
 dt = 0.05;
 
 % Domain setup [-L*pi, L*pi]
-scale = 100;
-Lx = 2 * scale * pi;
+L = 100;
+Lx = 2 * L * pi;
 Nx = 2^11;
 dx = Lx/Nx;
 plot_dt = 0.5; 
@@ -128,7 +128,7 @@ figure('Position', [100, 100, 1200, 800]);
 subplot(2,2,1);
 plot(Hmin1_norm, H1_norm, 'k-', 'LineWidth', 1.5); hold on;
 % Plot theoretical limit bounds
-kappa_1 = 2 / (scale^4); 
+kappa_1 = 2 / (L^4); 
 kappa_2 = Lx * (alpha+beta)^2;
 rho_0 = sqrt(kappa_2 / kappa_1);
 xline(rho_0, 'r--', 'LineWidth', 1);

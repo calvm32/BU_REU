@@ -68,8 +68,8 @@ classdef CH2DMonitor < SimulationMonitor
             caxis(obj.ax1, [-1.2 1.2]);
             colorbar(obj.ax1);
             title(obj.ax1, sprintf('t = %.3f', t_grid(1)));
-            scale = obj.params.scale;
-            xticks(obj.ax1, [-scale*pi 0 scale*pi]);
+            L = obj.params.L;
+            xticks(obj.ax1, [-L*pi 0 scale*pi]);
             xticklabels(obj.ax1, {['-' num2str(scale,'%.0f') '\pi'], '0', [num2str(scale,'%.0f') '\pi']});
             yticks(obj.ax1, [-scale*pi 0 scale*pi]);
             yticklabels(obj.ax1, {['-' num2str(scale,'%.0f') '\pi'], '0', [num2str(scale,'%.0f') '\pi']});

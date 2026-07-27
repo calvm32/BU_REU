@@ -6,8 +6,7 @@ clear all; close all;
 
 %% 1. Grid Parameters
 EP = logspace(-5, -2, 22);       
-%MU0 = linspace(-0.5, 0, 100); 
-MU0 = -0.2;
+MU0 = linspace(-0.5, 0, 100); 
 
 DMODE = zeros(length(EP),1);
 DMODE_final = zeros(length(EP),1);
@@ -119,14 +118,14 @@ parfor idx = 1:num_total_sims
     DMODE_final(idx) = dom_mode_max;
     MUTHR(idx) = mu_thr;
 
-    % filename = fsprintf('sample_ep=1e%.5f_mu0=%.7f_%s', log10(ep), mu0, 'Float64');
-    % s = struct("DMODE_HIST", dominate_modes, ...
-    %            "L2_HIST", monitor.l2_history(1:monitor.step_idx), ...
-    %            "AMP_HISTS", monitor.amp_history(:, 1:monitor.step_idx), ...
-    %            "ep", ep, "mu0", mu0, "Lx", Lx, "Nx", Nx, "dt", dt, ...
-    %            "terminate_thr", terminate_thr, 'datatype', 'Float64')
-    % 
-    % save(filename, "-fromstruct", s);
+    filename = fsprintf('sample_ep=1e%.5f_mu0=%.7f_%s', log10(ep), mu0, 'Float64');
+    s = struct("DMODE_HIST", dominate_modes, ...
+               "L2_HIST", monitor.l2_history(1:monitor.step_idx), ...
+               "AMP_HISTS", monitor.amp_history(:, 1:monitor.step_idx), ...
+               "ep", ep, "mu0", mu0, "Lx", Lx, "Nx", Nx, "dt", dt, ...
+               "terminate_thr", terminate_thr, 'datatype', 'Float64')
+
+    save(filename, "-fromstruct", s);
 
     %% SEND UPDATE TO QUEUE
     send(q, idx);

@@ -74,7 +74,7 @@ for m = 2:2
     % noise = noise - mean(noise);
     
     % Start at k_bif
-    u0 = 0.01*cos(k * x) + mass;
+    u0 = 0.01*cos(k * x / L) + mass;
     u0_hat = fft(u0);
 
     % Define problem

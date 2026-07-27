@@ -10,8 +10,8 @@ t0 = -2.0;
 T  = blowup_time + 200.0;
 dt = 0.01; 
 
-scale = 100;
-Lx = scale*pi;
+L = 100;
+Lx = L*pi;
 Nx = 2^11;
 dx = Lx/Nx;
 
